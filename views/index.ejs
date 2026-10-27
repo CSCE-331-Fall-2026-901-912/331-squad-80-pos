@@ -1,8 +1,62 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>Home Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Selection</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <p>This is <%=name%>'s homepage.</p>
-    <a href="/user">Go to User View</a>
+
+    <!-- Navigation Bar -->
+    <header class="navbar">
+        <div class="logo">Storefront</div>
+        <nav class="nav-links">
+            <a href="#categories" class="nav-item">Categories</a>
+            <a href="/checkout" class="nav-item checkout-link">Checkout (<span id="cart-count">0</span>)</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Category Filter Buttons (Dynamically Populated) -->
+        <section id="categories" class="category-section">
+            <h2>Categories</h2>
+            <div class="category-buttons">
+                <button class="cat-btn active" data-category="all">All Items</button>
+                <% if (categories && categories.length > 0) { %>
+                    <% categories.forEach(function(cat) { %>
+                        <button class="cat-btn" data-category="<%= cat %>">
+                            <%= cat.charAt(0).toUpperCase() + cat.slice(1) %>
+                        </button>
+                    <% }); %>
+                <% } %>
+            </div>
+        </section>
+
+        <!-- Database Items Display Grid -->
+        <section class="menu-grid-section">
+            <h2>Available Database Items</h2>
+            <div id="item-grid" class="item-grid">
+                <% if (items && items.length > 0) { %>
+                    <% items.forEach(function(item) { %>
+                        <div class="item-card" data-category="<%= item.category %>">
+                            <div>
+                                <h3 class="item-title"><%= item.name %></h3>
+                                <p class="item-desc"><%= item.description %></p>
+                            </div>
+                            <div class="item-footer">
+                                <span class="item-price">$<%= (Number(item.price) || 0).toFixed(2) %></span>
+                                <button class="add-btn" data-id="<%= item.id %>" data-name="<%= item.name %>">Add to Cart</button>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <p>No items found in database.</p>
+                <% } %>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/client.js"></script>
 </body>
+</html>

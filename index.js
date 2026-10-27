@@ -6,8 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Set up view engine
+// Set up view engine and static files directory
 app.set("view engine", "ejs");
+app.use(express.static('public'));
 
 // Create database pool
 const pool = new Pool({
@@ -27,17 +28,34 @@ process.on('SIGINT', function() {
 });
 
 // Routes
-app.get('/', (req, res) => {
-    const data = { name: 'Mario' };
-    res.render('index', data);
+app.get('/', async (req, res) => {
+    try {
+        const query_res = await pool.query('SELECT * FROM menuitem ORDER BY menu_item_id;');
+        const items = query_res.rows;
+        
+        // Extract unique, non-null categories from the database items
+        const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
+        
+        const data = { 
+            name: 'Mario', 
+            items: items,
+            categories: categories // <-- This property must be present!
+        };
+        
+        res.render('index', data);
+    } catch (err) {
+        console.error('Error executing query:', err);
+        res.status(500).send('Server error retrieving menu items from database.');
+    }
 });
 
+// Team Members Page
 app.get('/user', async (req, res) => {
     try {
         const query_res = await pool.query('SELECT * FROM teammembers;');
         
         const data = { teammembers: query_res.rows };
-        console.log(query_res.rows); // This prints your rows in the terminal
+        console.log(query_res.rows);
         
         res.render('user', data);
     } catch (err) {
