@@ -22,6 +22,12 @@
 
     <main class="main-layout main-layout-with-sidebar">
         <div class="center-banner">
+            <nav id="menu-category-nav" class="menu-category-nav" aria-label="Drink categories" hidden>
+                <% menuCategories.forEach(function(cat) { %>
+                    <button class="category-tab" type="button" data-category="<%= cat %>" aria-pressed="false"><%= cat %></button>
+                <% }); %>
+            </nav>
+
             <section id="category-view" class="category-section" aria-labelledby="category-heading">
                 <p class="eyebrow">Made for your kind of sip</p>
                 <h1 id="category-heading" tabindex="-1">Choose a category</h1>
@@ -145,22 +151,41 @@
                 </div>
                 <fieldset class="customization-group addon-group">
                     <legend>Add-ons</legend>
-                    <label class="addon-option">
-                        <span><input type="checkbox" name="addons" value="boba"> Boba</span>
-                        <strong>+$0.50</strong>
-                    </label>
-                    <label class="addon-option">
-                        <span><input type="checkbox" name="addons" value="grass-jelly"> Grass jelly</span>
-                        <strong>+$0.50</strong>
-                    </label>
-                    <label class="addon-option">
-                        <span><input type="checkbox" name="addons" value="pudding"> Pudding</span>
-                        <strong>+$0.50</strong>
-                    </label>
-                    <label class="addon-option">
-                        <span><input type="checkbox" name="addons" value="cheese-foam"> Cheese foam</span>
-                        <strong>+$1.00</strong>
-                    </label>
+                    <p class="addon-helper">Choose any toppings you like. Prices are per drink.</p>
+                    <div class="addon-options">
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="boba"> Boba</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="grass-jelly"> Grass jelly</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="pudding"> Pudding</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="aloe-vera"> Aloe vera</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="lychee-jelly"> Lychee jelly</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="coconut-jelly"> Coconut jelly</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="crystal-boba"> Crystal boba</span>
+                            <strong>+$0.50</strong>
+                        </label>
+                        <label class="addon-option">
+                            <span><input type="checkbox" name="addons" value="cheese-foam"> Cheese foam</span>
+                            <strong>+$1.00</strong>
+                        </label>
+                    </div>
                 </fieldset>
             </div>
 

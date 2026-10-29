@@ -19,8 +19,16 @@
     <main class="checkout-page">
         <section class="checkout-card" aria-labelledby="checkout-heading">
             <a class="back-to-menu" href="/">← Back to menu</a>
-            <p class="eyebrow">Almost ready</p>
+            <p id="checkout-eyebrow" class="eyebrow">Almost ready</p>
             <h1 id="checkout-heading">Review your order</h1>
+
+            <div id="order-confirmation" class="order-confirmation" role="status" aria-live="polite" hidden>
+                <span class="confirmation-mark" aria-hidden="true">✓</span>
+                <div>
+                    <h2>Order confirmed</h2>
+                    <p>Your order is saved for this demo session.</p>
+                </div>
+            </div>
 
             <p id="checkout-storage-error" class="storage-error" role="alert" hidden>
                 Your browser could not read the saved order. Allow storage for this site, then return to the menu and add your drinks again.
@@ -36,6 +44,11 @@
             <div id="checkout-total" class="checkout-total">
                 <span>Order total</span>
                 <strong id="checkout-total-price">$0.00</strong>
+            </div>
+
+            <div id="checkout-actions" class="checkout-actions">
+                <button id="confirm-order-btn" class="confirm-order-btn" type="button">Confirm order</button>
+                <a id="start-new-order" class="proceed-checkout-btn" href="/" hidden>Start a new order</a>
             </div>
         </section>
     </main>

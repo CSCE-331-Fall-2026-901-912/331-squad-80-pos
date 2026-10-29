@@ -1,8 +1,13 @@
 const CART_KEY = 'drink-cart-v1';
+const CONFIRMED_ORDER_KEY = 'drink-confirmed-order-v1';
 const ADD_ONS = [
     { id: 'boba', label: 'Boba', priceCents: 50 },
     { id: 'grass-jelly', label: 'Grass jelly', priceCents: 50 },
     { id: 'pudding', label: 'Pudding', priceCents: 50 },
+    { id: 'aloe-vera', label: 'Aloe vera', priceCents: 50 },
+    { id: 'lychee-jelly', label: 'Lychee jelly', priceCents: 50 },
+    { id: 'coconut-jelly', label: 'Coconut jelly', priceCents: 50 },
+    { id: 'crystal-boba', label: 'Crystal boba', priceCents: 50 },
     { id: 'cheese-foam', label: 'Cheese foam', priceCents: 100 }
 ];
 const ADD_ONS_BY_ID = new Map(ADD_ONS.map(addon => [addon.id, addon]));
@@ -16,8 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (document.body.dataset.page === 'checkout') {
-        renderCheckout(cart);
-        updateCartBadge(cart);
+        const confirmedOrder = readConfirmedOrder();
+        const checkoutItems = confirmedOrder ? confirmedOrder.items : cart;
+        renderCheckout(checkoutItems, Boolean(confirmedOrder));
+        updateCartBadge(confirmedOrder ? [] : cart);
     }
 });
 
@@ -37,32 +44,79 @@ function readCart() {
         const stored = JSON.parse(saved);
         if (!Array.isArray(stored)) return [];
 
-        return stored.filter(line =>
-            line &&
-            typeof line.id === 'string' &&
-            typeof line.name === 'string' &&
-            Number.isInteger(line.baseCents) &&
-            line.baseCents >= 0 &&
-            Number.isInteger(line.quantity) &&
-            line.quantity > 0 &&
-            typeof line.sugar === 'string' &&
-            typeof line.ice === 'string' &&
-            Array.isArray(line.addons)
-        ).map(line => ({
-            ...line,
-            addons: line.addons.filter(id => ADD_ONS_BY_ID.has(id))
-        }));
+        return normalizeCart(stored);
     } catch {
         return [];
+    }
+}
+
+function normalizeCart(stored) {
+    if (!Array.isArray(stored)) return [];
+
+    return stored.filter(line =>
+        line &&
+        typeof line.id === 'string' &&
+        typeof line.name === 'string' &&
+        Number.isInteger(line.baseCents) &&
+        line.baseCents >= 0 &&
+        Number.isInteger(line.quantity) &&
+        line.quantity > 0 &&
+        typeof line.sugar === 'string' &&
+        typeof line.ice === 'string' &&
+        Array.isArray(line.addons)
+    ).map(line => ({
+        ...line,
+        addons: [...new Set(line.addons.filter(id => ADD_ONS_BY_ID.has(id)))]
+    }));
+}
+
+function readConfirmedOrder() {
+    let saved;
+    try {
+        saved = sessionStorage.getItem(CONFIRMED_ORDER_KEY);
+    } catch {
+        cartStorageUnavailable = true;
+        return null;
+    }
+
+    if (!saved) return null;
+
+    try {
+        const order = JSON.parse(saved);
+        const items = normalizeCart(order?.items);
+        if (items.length === 0) return null;
+        return { items };
+    } catch {
+        return null;
     }
 }
 
 function saveCart(cart) {
     try {
         sessionStorage.setItem(CART_KEY, JSON.stringify(cart));
+        sessionStorage.removeItem(CONFIRMED_ORDER_KEY);
         cartStorageUnavailable = false;
         return true;
     } catch {
+        cartStorageUnavailable = true;
+        return false;
+    }
+}
+
+function saveConfirmedOrder(cart) {
+    try {
+        sessionStorage.setItem(CONFIRMED_ORDER_KEY, JSON.stringify({
+            items: cart
+        }));
+        sessionStorage.removeItem(CART_KEY);
+        cartStorageUnavailable = false;
+        return true;
+    } catch {
+        try {
+            sessionStorage.removeItem(CONFIRMED_ORDER_KEY);
+        } catch {
+            // Keep the confirmation attempt failed if session storage is unavailable.
+        }
         cartStorageUnavailable = true;
         return false;
     }
@@ -95,6 +149,8 @@ function configurationKey(line) {
 function setupMenu(cart) {
     const categoryView = document.getElementById('category-view');
     const categoryButtons = Array.from(document.querySelectorAll('.category-card'));
+    const categoryTabs = Array.from(document.querySelectorAll('.category-tab'));
+    const categoryNav = document.getElementById('menu-category-nav');
     const menuViews = Array.from(document.querySelectorAll('[data-category-view]'));
     const cartItemsList = document.getElementById('cart-items-list');
     const cartTotal = document.getElementById('cart-total-price');
@@ -104,23 +160,32 @@ function setupMenu(cart) {
     let selectedDrink = null;
     let lastCategoryButton = null;
 
-    categoryButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const category = button.dataset.category;
-            const view = menuViews.find(section => section.dataset.categoryView === category);
-            if (!view) return;
+    function showCategory(category, sourceButton) {
+        const view = menuViews.find(section => section.dataset.categoryView === category);
+        if (!view) return;
 
-            lastCategoryButton = button;
-            categoryView.hidden = true;
-            menuViews.forEach(section => { section.hidden = section !== view; });
-            view.querySelector('h1')?.focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (sourceButton?.classList.contains('category-card')) lastCategoryButton = sourceButton;
+        categoryView.hidden = true;
+        categoryNav.hidden = false;
+        menuViews.forEach(section => { section.hidden = section !== view; });
+        categoryTabs.forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.category === category));
         });
+        view.querySelector('h1')?.focus();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    categoryButtons.forEach(button => {
+        button.addEventListener('click', () => showCategory(button.dataset.category, button));
+    });
+    categoryTabs.forEach(button => {
+        button.addEventListener('click', () => showCategory(button.dataset.category, button));
     });
 
     document.querySelectorAll('.back-to-categories').forEach(button => {
         button.addEventListener('click', () => {
             menuViews.forEach(section => { section.hidden = true; });
+            categoryNav.hidden = true;
             categoryView.hidden = false;
             lastCategoryButton?.focus();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -250,18 +315,30 @@ function renderMenuCart(list, total, cart) {
     total.textContent = formatMoney(totalCents);
 }
 
-function renderCheckout(cart) {
+function renderCheckout(cart, confirmed = false) {
     const itemsContainer = document.getElementById('checkout-items');
     const emptyState = document.getElementById('checkout-empty');
     const totalRow = document.getElementById('checkout-total');
     const totalPrice = document.getElementById('checkout-total-price');
     const storageError = document.getElementById('checkout-storage-error');
+    const confirmation = document.getElementById('order-confirmation');
+    const eyebrow = document.getElementById('checkout-eyebrow');
+    const heading = document.getElementById('checkout-heading');
+    const actions = document.getElementById('checkout-actions');
+    const confirmButton = document.getElementById('confirm-order-btn');
+    const startNewOrder = document.getElementById('start-new-order');
     if (!itemsContainer || !emptyState || !totalRow || !totalPrice) return;
 
     itemsContainer.replaceChildren();
     emptyState.hidden = cart.length > 0;
     itemsContainer.hidden = cart.length === 0;
-    totalRow.hidden = false;
+    totalRow.hidden = cart.length === 0;
+    if (confirmation) confirmation.hidden = !confirmed;
+    if (eyebrow) eyebrow.textContent = confirmed ? 'Demo receipt' : 'Almost ready';
+    if (heading) heading.textContent = confirmed ? 'Your receipt' : 'Review your order';
+    if (actions) actions.hidden = cart.length === 0;
+    if (confirmButton) confirmButton.hidden = confirmed || cart.length === 0;
+    if (startNewOrder) startNewOrder.hidden = !confirmed;
     if (storageError) storageError.hidden = !cartStorageUnavailable;
 
     let orderTotalCents = 0;
@@ -312,6 +389,40 @@ function renderCheckout(cart) {
     });
 
     totalPrice.textContent = formatMoney(orderTotalCents);
+
+    confirmButton?.addEventListener('click', () => {
+        if (cart.length === 0) return;
+        if (!saveConfirmedOrder(cart)) {
+            if (storageError) {
+                storageError.textContent = 'Your browser could not save the demo confirmation. Allow storage for this site, then try again.';
+                storageError.hidden = false;
+            }
+            return;
+        }
+
+        if (storageError) storageError.hidden = true;
+        if (confirmation) confirmation.hidden = false;
+        if (eyebrow) eyebrow.textContent = 'Demo receipt';
+        if (heading) heading.textContent = 'Your receipt';
+        confirmButton.hidden = true;
+        if (startNewOrder) startNewOrder.hidden = false;
+        updateCartBadge([]);
+        confirmation?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    startNewOrder?.addEventListener('click', event => {
+        event.preventDefault();
+        try {
+            sessionStorage.removeItem(CART_KEY);
+            sessionStorage.removeItem(CONFIRMED_ORDER_KEY);
+            window.location.assign(startNewOrder.href);
+        } catch {
+            if (storageError) {
+                storageError.textContent = 'Your browser could not reset this demo order. Allow storage for this site, then try again.';
+                storageError.hidden = false;
+            }
+        }
+    });
 }
 
 function appendChoice(list, text) {
