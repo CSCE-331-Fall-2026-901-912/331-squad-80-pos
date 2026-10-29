@@ -49,6 +49,10 @@ app.get('/', async (req, res) => {
     }
 });
 
+app.get('/checkout', (req, res) => {
+    res.render('checkout');
+});
+
 // Team Members Page
 app.get('/team_members', async (req, res) => {
     try {

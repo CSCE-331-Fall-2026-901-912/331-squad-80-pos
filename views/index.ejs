@@ -1,173 +1,178 @@
+<%
+    const menuCategories = categories || [];
+    const menuItems = items || [];
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu Selection</title>
+    <title>Drink Menu</title>
     <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/client.js" defer></script>
 </head>
-<body>
-
-    <!-- Navigation Bar -->
+<body data-page="menu">
     <header class="navbar">
-        <div class="logo">Menu</div>
-        <nav class="nav-links">
-            <a href="/checkout" class="checkout-btn">
-                🛒 Checkout <span id="cart-count" class="cart-badge">0</span>
-            </a>
-        </nav>
+        <a class="logo" href="/" aria-label="Drink menu">Menu</a>
+        <a href="/checkout" class="checkout-btn">
+            <span>Checkout</span>
+            <span id="cart-count" class="cart-badge" aria-label="0 items in order">0</span>
+        </a>
     </header>
 
-    <main class="main-layout">
-        <!-- Main Centered Container Banner -->
+    <main class="main-layout main-layout-with-sidebar">
         <div class="center-banner">
-            
-            <!-- Category Filter Buttons -->
-            <section id="categories" class="category-section">
-                <h2>Categories</h2>
-                <div class="category-buttons">
-                    <button class="cat-btn active" data-category="all">All Items</button>
-                    <% if (categories && categories.length > 0) { %>
-                        <% categories.forEach(function(cat) { %>
-                            <button class="cat-btn" data-category="<%= cat %>">
-                                <%= cat.charAt(0).toUpperCase() + cat.slice(1) %>
+            <section id="category-view" class="category-section" aria-labelledby="category-heading">
+                <p class="eyebrow">Made for your kind of sip</p>
+                <h1 id="category-heading" tabindex="-1">Choose a category</h1>
+                <div class="category-list">
+                    <% if (menuCategories.length > 0) { %>
+                        <% menuCategories.forEach(function(cat, index) {
+                            const representative = menuItems.find(function(item) { return item.category === cat; });
+                            const representativeId = representative && (representative.menu_item_id || representative.id);
+                        %>
+                            <button class="category-card cat-btn" type="button" data-category="<%= cat %>" aria-label="Browse <%= cat %>">
+                                <span class="category-name"><%= cat %></span>
+                                <% if (representativeId) { %>
+                                    <svg class="category-art" viewBox="0 0 160 190" aria-hidden="true" focusable="false">
+                                        <use href="/images/menu-drinks.svg#drink-<%= representativeId %>"></use>
+                                    </svg>
+                                <% } %>
+                                <span class="category-arrow" aria-hidden="true">→</span>
                             </button>
                         <% }); %>
-                    <% } %>
-                </div>
-            </section>
-
-            <!-- Vertical Menu List -->
-            <section class="menu-list-section">
-                <h2>Menu Items</h2>
-                <div id="item-list" class="item-list">
-                    <% if (items && items.length > 0) { %>
-                        <% items.forEach(function(item) { %>
-                            <div class="item-card" data-category="<%= item.category %>">
-                                <div class="item-info">
-                                    <h3 class="item-title"><%= item.name %></h3>
-                                    <p class="item-desc"><%= item.description %></p>
-                                </div>
-                                <div class="item-footer">
-                                    <span class="item-price">$<%= (Number(item.current_price) || 0).toFixed(2) %></span>
-                                    <button class="add-btn" data-id="<%= item.menu_item_id || item.id %>" data-name="<%= item.name %>" data-price="<%= Number(item.current_price) || 0 %>">
-                                        Add to Cart
-                                    </button>
-                                </div>
-                            </div>
-                        <% }); %>
                     <% } else { %>
-                        <p class="no-items">No items found in database.</p>
+                        <p class="no-items">No drink categories are available.</p>
                     <% } %>
                 </div>
             </section>
 
+            <% menuCategories.forEach(function(cat) { %>
+                <section class="category-menu-view" data-category-view="<%= cat %>" hidden aria-labelledby="heading-<%= menuCategories.indexOf(cat) %>">
+                    <button class="back-to-categories" type="button">← All categories</button>
+                    <p class="eyebrow">Explore the menu</p>
+                    <h1 id="heading-<%= menuCategories.indexOf(cat) %>" tabindex="-1"><%= cat %></h1>
+                    <div class="item-list">
+                        <% const categoryItems = menuItems.filter(function(item) { return item.category === cat; }); %>
+                        <% if (categoryItems.length > 0) { %>
+                            <% categoryItems.forEach(function(item) {
+                                const itemId = item.menu_item_id || item.id;
+                                const baseCents = Math.round((Number(item.current_price) || 0) * 100);
+                            %>
+                                <article
+                                    class="item-card"
+                                    data-item-id="<%= itemId %>"
+                                    data-item-name="<%= item.name %>"
+                                    data-base-cents="<%= baseCents %>"
+                                    data-item-art="drink-<%= itemId %>">
+                                    <button class="item-select" type="button" aria-label="Customize <%= item.name %>">
+                                        <svg class="item-art" viewBox="0 0 160 190" role="img" aria-label="<%= item.name %> illustration" focusable="false">
+                                            <use href="/images/menu-drinks.svg#drink-<%= itemId %>"></use>
+                                        </svg>
+                                        <span class="item-info">
+                                            <span class="item-title"><%= item.name %></span>
+                                            <span class="item-desc"><%= item.description %></span>
+                                        </span>
+                                    </button>
+                                    <div class="item-footer">
+                                        <span class="item-price">$<%= (baseCents / 100).toFixed(2) %></span>
+                                        <span class="add-btn customize-label" aria-hidden="true">Customize</span>
+                                    </div>
+                                </article>
+                            <% }); %>
+                        <% } else { %>
+                            <p class="no-items">No drinks found in this category.</p>
+                        <% } %>
+                    </div>
+                </section>
+            <% }); %>
         </div>
-        <!-- Right-Hand Cart Display Box Sidebar -->
-        <aside class="cart-sidebar">
+
+        <aside class="cart-sidebar" aria-labelledby="cart-heading">
             <div class="cart-box">
-                <h3>Your Cart</h3>
-                <ul id="cart-items-list" class="cart-items-list">
-                    <li class="empty-cart-msg">Your cart is empty</li>
+                <h2 id="cart-heading">Your order</h2>
+                <ul id="cart-items-list" class="cart-items-list" aria-live="polite">
+                    <li class="empty-cart-msg">Your order is empty.</li>
                 </ul>
                 <div class="cart-total-section">
-                    <span>Total:</span>
+                    <span>Subtotal</span>
                     <span id="cart-total-price">$0.00</span>
                 </div>
-                <a href="/checkout" class="proceed-checkout-btn">Proceed to Checkout</a>
+                <a href="/checkout" class="proceed-checkout-btn">Review order</a>
             </div>
         </aside>
     </main>
 
-    <!-- Embedded Client-Side Script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. Category Filtering Logic
-            const categoryButtons = document.querySelectorAll('.cat-btn');
-            const itemCards = document.querySelectorAll('.item-card');
+    <dialog id="customization-dialog" class="customization-dialog" aria-labelledby="dialog-item-name">
+        <form id="customization-form" class="customization-form">
+            <div class="dialog-heading">
+                <div>
+                    <p class="eyebrow">Make it yours</p>
+                    <h2 id="dialog-item-name">Customize drink</h2>
+                </div>
+                <button id="close-customization" class="dialog-close" type="button" aria-label="Close customization">×</button>
+            </div>
 
-            categoryButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const selectedCategory = button.getAttribute('data-category');
+            <div class="dialog-product">
+                <svg id="dialog-art" class="dialog-art" viewBox="0 0 160 190" role="img" aria-label="Drink illustration" focusable="false">
+                    <use id="dialog-art-use" href="/images/menu-drinks.svg#drink-1"></use>
+                </svg>
+                <div class="dialog-price-copy">
+                    <span>Base price</span>
+                    <strong id="dialog-base-price">$0.00</strong>
+                </div>
+            </div>
 
-                    // Update active state on buttons
-                    categoryButtons.forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
+            <div class="customization-groups">
+                <div class="customization-group">
+                    <label for="sugar-level">Sugar level <span>Free</span></label>
+                    <select id="sugar-level" name="sugar">
+                        <option value="0%">0%</option>
+                        <option value="25%">25%</option>
+                        <option value="50%">50%</option>
+                        <option value="75%">75%</option>
+                        <option value="100%" selected>100%</option>
+                    </select>
+                </div>
+                <div class="customization-group">
+                    <label for="ice-level">Ice level <span>Free</span></label>
+                    <select id="ice-level" name="ice">
+                        <option value="No ice">No ice</option>
+                        <option value="Less ice">Less ice</option>
+                        <option value="Regular ice" selected>Regular ice</option>
+                        <option value="Extra ice">Extra ice</option>
+                    </select>
+                </div>
+                <fieldset class="customization-group addon-group">
+                    <legend>Add-ons</legend>
+                    <label class="addon-option">
+                        <span><input type="checkbox" name="addons" value="boba"> Boba</span>
+                        <strong>+$0.50</strong>
+                    </label>
+                    <label class="addon-option">
+                        <span><input type="checkbox" name="addons" value="grass-jelly"> Grass jelly</span>
+                        <strong>+$0.50</strong>
+                    </label>
+                    <label class="addon-option">
+                        <span><input type="checkbox" name="addons" value="pudding"> Pudding</span>
+                        <strong>+$0.50</strong>
+                    </label>
+                    <label class="addon-option">
+                        <span><input type="checkbox" name="addons" value="cheese-foam"> Cheese foam</span>
+                        <strong>+$1.00</strong>
+                    </label>
+                </fieldset>
+            </div>
 
-                    // Filter menu items
-                    itemCards.forEach(card => {
-                        const cardCategory = card.getAttribute('data-category');
-                        
-                        if (selectedCategory === 'all' || cardCategory === selectedCategory) {
-                            card.style.display = 'flex';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
-                });
-            });
-
-            // 2. Interactive Cart Logic
-            const cart = [];
-            const cartCountEl = document.getElementById('cart-count');
-            const cartItemsListEl = document.getElementById('cart-items-list');
-            const cartTotalPriceEl = document.getElementById('cart-total-price');
-            const addButtons = document.querySelectorAll('.add-btn');
-
-            addButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const id = button.getAttribute('data-id');
-                    const name = button.getAttribute('data-name');
-                    const price = parseFloat(button.getAttribute('data-price')) || 0;
-
-                    // Check if item already exists in cart
-                    const existingItem = cart.find(item => item.id === id);
-                    if (existingItem) {
-                        existingItem.quantity++;
-                    } else {
-                        cart.push({ id, name, price, quantity: 1 });
-                    }
-
-                    updateCartUI();
-                });
-            });
-
-            function updateCartUI() {
-                // Clear current list view
-                cartItemsListEl.innerHTML = '';
-
-                if (cart.length === 0) {
-                    cartItemsListEl.innerHTML = '<li class="empty-cart-msg">Your cart is empty</li>';
-                    cartCountEl.textContent = '0';
-                    cartTotalPriceEl.textContent = '$0.00';
-                    return;
-                }
-
-                let totalCount = 0;
-                let totalPrice = 0;
-
-                cart.forEach(item => {
-                    totalCount += item.quantity;
-                    totalPrice += item.price * item.quantity;
-
-                    const li = document.createElement('li');
-                    li.className = 'cart-item-row';
-                    li.innerHTML = `
-                        <span>${nameEllipsis(item.name)} (x${item.quantity})</span>
-                        <span>$${(item.price * item.quantity).toFixed(2)}</span>
-                    `;
-                    cartItemsListEl.appendChild(li);
-                });
-
-                cartCountEl.textContent = totalCount;
-                cartTotalPriceEl.textContent = `$${totalPrice.toFixed(2)}`;
-            }
-
-            function nameEllipsis(name) {
-                return name.length > 18 ? name.substring(0, 15) + '...' : name;
-            }
-        });
-    </script>
-    
+            <div class="dialog-total-row">
+                <span>Drink total</span>
+                <strong id="dialog-total-price">$0.00</strong>
+            </div>
+            <button class="add-to-order-btn" type="submit">Add to order</button>
+            <p id="cart-storage-error" class="storage-error" role="alert" hidden>
+                Your browser could not save the order. Allow storage for this site, then try again.
+            </p>
+        </form>
+    </dialog>
 </body>
 </html>
