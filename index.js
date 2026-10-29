@@ -37,9 +37,9 @@ app.get('/', async (req, res) => {
         const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
         
         const data = { 
-            name: 'Mario', 
+            name: 'menu_items', 
             items: items,
-            categories: categories // <-- This property must be present!
+            categories: categories, 
         };
         
         res.render('index', data);
@@ -50,14 +50,14 @@ app.get('/', async (req, res) => {
 });
 
 // Team Members Page
-app.get('/user', async (req, res) => {
+app.get('/team_members', async (req, res) => {
     try {
         const query_res = await pool.query('SELECT * FROM teammembers;');
         
         const data = { teammembers: query_res.rows };
         console.log(query_res.rows);
         
-        res.render('user', data);
+        res.render('team_members', data);
     } catch (err) {
         console.error('Error executing query:', err);
         res.status(500).send('Server error retrieving data from database.');
