@@ -22,6 +22,9 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+const { registerSalesReport } = require('./sales-report');
+registerSalesReport(app, pool);
+
 // Add process hook to gracefully shutdown pool
 process.on('SIGINT', function() {
     pool.end();
