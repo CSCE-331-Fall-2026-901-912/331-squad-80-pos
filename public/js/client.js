@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.body.dataset.page === 'checkout') {
         const confirmedOrder = readConfirmedOrder();
         const checkoutItems = confirmedOrder ? confirmedOrder.items : cart;
-        renderCheckout(checkoutItems, Boolean(confirmedOrder));
+        renderCheckout(checkoutItems, confirmedOrder);
         updateCartBadge(confirmedOrder ? [] : cart);
     }
 });
@@ -85,7 +85,7 @@ function readConfirmedOrder() {
         const order = JSON.parse(saved);
         const items = normalizeCart(order?.items);
         if (items.length === 0) return null;
-        return { items };
+        return { items, orderId: order.orderId ?? null };
     } catch {
         return null;
     }
@@ -103,10 +103,11 @@ function saveCart(cart) {
     }
 }
 
-function saveConfirmedOrder(cart) {
+function saveConfirmedOrder(cart, orderId) {
     try {
         sessionStorage.setItem(CONFIRMED_ORDER_KEY, JSON.stringify({
-            items: cart
+            items: cart,
+            orderId
         }));
         sessionStorage.removeItem(CART_KEY);
         cartStorageUnavailable = false;
@@ -367,7 +368,8 @@ function renderMenuCart(list, total, cart, changeQuantity) {
     total.textContent = formatMoney(totalCents);
 }
 
-function renderCheckout(cart, confirmed = false) {
+function renderCheckout(cart, confirmedOrder = null) {
+    const confirmed = Boolean(confirmedOrder);
     const itemsContainer = document.getElementById('checkout-items');
     const emptyState = document.getElementById('checkout-empty');
     const totalRow = document.getElementById('checkout-total');
@@ -379,6 +381,7 @@ function renderCheckout(cart, confirmed = false) {
     const actions = document.getElementById('checkout-actions');
     const confirmButton = document.getElementById('confirm-order-btn');
     const startNewOrder = document.getElementById('start-new-order');
+    const orderNumber = document.getElementById('order-number');
     if (!itemsContainer || !emptyState || !totalRow || !totalPrice) return;
 
     itemsContainer.replaceChildren();
@@ -386,7 +389,8 @@ function renderCheckout(cart, confirmed = false) {
     itemsContainer.hidden = cart.length === 0;
     totalRow.hidden = cart.length === 0;
     if (confirmation) confirmation.hidden = !confirmed;
-    if (eyebrow) eyebrow.textContent = confirmed ? 'Demo receipt' : 'Almost ready';
+    if (orderNumber) orderNumber.textContent = confirmedOrder?.orderId ? `#${confirmedOrder.orderId}` : '';
+    if (eyebrow) eyebrow.textContent = confirmed ? 'Receipt' : 'Almost ready';
     if (heading) heading.textContent = confirmed ? 'Your receipt' : 'Review your order';
     if (actions) actions.hidden = cart.length === 0;
     if (confirmButton) confirmButton.hidden = confirmed || cart.length === 0;
@@ -442,19 +446,39 @@ function renderCheckout(cart, confirmed = false) {
 
     totalPrice.textContent = formatMoney(orderTotalCents);
 
-    confirmButton?.addEventListener('click', () => {
-        if (cart.length === 0) return;
-        if (!saveConfirmedOrder(cart)) {
+    confirmButton?.addEventListener('click', async () => {
+        if (cart.length === 0 || confirmButton.disabled) return;
+        confirmButton.disabled = true;
+        confirmButton.textContent = 'Placing order…';
+
+        let orderId;
+        try {
+            const response = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: cart })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'Could not place your order. Please try again.');
+            orderId = result.orderId;
+        } catch (err) {
+            confirmButton.disabled = false;
+            confirmButton.textContent = 'Confirm order';
             if (storageError) {
-                storageError.textContent = 'Your browser could not save the demo confirmation. Allow storage for this site, then try again.';
+                storageError.textContent = err instanceof TypeError
+                    ? 'Could not reach the server. Check your connection and try again.'
+                    : err.message;
                 storageError.hidden = false;
             }
             return;
         }
 
+        // The order is saved on the server even if the browser cannot store the receipt
+        saveConfirmedOrder(cart, orderId);
         if (storageError) storageError.hidden = true;
+        if (orderNumber) orderNumber.textContent = `#${orderId}`;
         if (confirmation) confirmation.hidden = false;
-        if (eyebrow) eyebrow.textContent = 'Demo receipt';
+        if (eyebrow) eyebrow.textContent = 'Receipt';
         if (heading) heading.textContent = 'Your receipt';
         confirmButton.hidden = true;
         if (startNewOrder) startNewOrder.hidden = false;

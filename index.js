@@ -9,6 +9,7 @@ const port = process.env.PORT || 3000;
 // Set up view engine and static files directory
 app.set("view engine", "ejs");
 app.use(express.static('public'));
+app.use(express.json());
 
 // Create database pool
 const pool = new Pool({
@@ -51,6 +52,90 @@ app.get('/', async (req, res) => {
 
 app.get('/checkout', (req, res) => {
     res.render('checkout');
+});
+
+// Add-on prices in cents; keep in sync with ADD_ONS in public/js/client.js
+const ADD_ON_PRICES = {
+    'boba': 50,
+    'grass-jelly': 50,
+    'pudding': 50,
+    'aloe-vera': 50,
+    'lychee-jelly': 50,
+    'coconut-jelly': 50,
+    'crystal-boba': 50,
+    'cheese-foam': 100
+};
+const GUEST_CUSTOMER_ID = 0;
+const DEFAULT_EMPLOYEE_ID = 1;
+
+// Place an order: prices are recomputed from the database, not trusted from the client
+app.post('/api/orders', async (req, res) => {
+    const lines = req.body?.items;
+    if (!Array.isArray(lines) || lines.length === 0) {
+        return res.status(400).json({ error: 'Order has no items.' });
+    }
+
+    const parsed = [];
+    for (const line of lines) {
+        const menuItemId = Number(line?.id);
+        const quantity = Number(line?.quantity);
+        const addons = Array.isArray(line?.addons) ? line.addons : [];
+        if (!Number.isInteger(menuItemId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 99
+            || !addons.every(id => Object.hasOwn(ADD_ON_PRICES, id))) {
+            return res.status(400).json({ error: 'Order contains an invalid item.' });
+        }
+        const addonCents = [...new Set(addons)].reduce((sum, id) => sum + ADD_ON_PRICES[id], 0);
+        parsed.push({ menuItemId, quantity, addonCents });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // IDs are not auto-generated, so serialize order creation while picking the next IDs
+        await client.query('LOCK TABLE orders, orderdetail IN EXCLUSIVE MODE');
+
+        const ids = [...new Set(parsed.map(line => line.menuItemId))];
+        const priceRes = await client.query(
+            'SELECT menu_item_id, current_price FROM menuitem WHERE menu_item_id = ANY($1) AND is_available = 1',
+            [ids]
+        );
+        const baseCents = new Map(priceRes.rows.map(row => [row.menu_item_id, Math.round(Number(row.current_price) * 100)]));
+        if (baseCents.size !== ids.length) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'An item in your order is no longer available.' });
+        }
+
+        const details = parsed.map(line => ({
+            ...line,
+            unitCents: baseCents.get(line.menuItemId) + line.addonCents
+        }));
+        const totalCents = details.reduce((sum, line) => sum + line.unitCents * line.quantity, 0);
+
+        const orderRes = await client.query(
+            `INSERT INTO orders (order_id, customer_id, employee_id, total_cost)
+             SELECT COALESCE(MAX(order_id), 0) + 1, $1, $2, $3 FROM orders
+             RETURNING order_id`,
+            [GUEST_CUSTOMER_ID, DEFAULT_EMPLOYEE_ID, totalCents / 100]
+        );
+        const orderId = orderRes.rows[0].order_id;
+
+        for (const line of details) {
+            await client.query(
+                `INSERT INTO orderdetail (order_detail_id, order_id, menu_item_id, quantity, unit_price)
+                 SELECT COALESCE(MAX(order_detail_id), 0) + 1, $1, $2, $3, $4 FROM orderdetail`,
+                [orderId, line.menuItemId, line.quantity, line.unitCents / 100]
+            );
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json({ orderId, totalCents });
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Error placing order:', err);
+        res.status(500).json({ error: 'Could not place your order. Please try again.' });
+    } finally {
+        client.release();
+    }
 });
 
 // Team Members Page
