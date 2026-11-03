@@ -16,6 +16,7 @@
         <a class="logo" href="/" aria-label="Drink menu">Menu</a>
         <nav class="nav-links" aria-label="Main">
             <a class="nav-link" href="/orders">Orders</a>
+            <a class="nav-link" href="/manager">Manager</a>
             <a href="/checkout" class="checkout-btn">
                 <span>Checkout</span>
                 <span id="cart-count" class="cart-badge" aria-label="0 items in order">0</span>
@@ -67,14 +68,15 @@
                             <% categoryItems.forEach(function(item) {
                                 const itemId = item.menu_item_id || item.id;
                                 const baseCents = Math.round((Number(item.current_price) || 0) * 100);
+                                const soldOut = Number(item.is_available) !== 1;
                             %>
                                 <article
-                                    class="item-card"
+                                    class="item-card<%= soldOut ? ' sold-out' : '' %>"
                                     data-item-id="<%= itemId %>"
                                     data-item-name="<%= item.name %>"
                                     data-base-cents="<%= baseCents %>"
                                     data-item-art="drink-<%= itemId %>">
-                                    <button class="item-select" type="button" aria-label="Customize <%= item.name %>">
+                                    <button class="item-select" type="button" aria-label="<%= soldOut ? item.name + ' is sold out' : 'Customize ' + item.name %>"<%= soldOut ? ' disabled' : '' %>>
                                         <svg class="item-art" viewBox="0 0 160 190" role="img" aria-label="<%= item.name %> illustration" focusable="false">
                                             <use href="/images/menu-drinks.svg#drink-<%= itemId %>"></use>
                                         </svg>
@@ -85,7 +87,11 @@
                                     </button>
                                     <div class="item-footer">
                                         <span class="item-price">$<%= (baseCents / 100).toFixed(2) %></span>
-                                        <span class="add-btn customize-label" aria-hidden="true">Customize</span>
+                                        <% if (soldOut) { %>
+                                            <span class="sold-out-label">Sold out</span>
+                                        <% } else { %>
+                                            <span class="add-btn customize-label" aria-hidden="true">Customize</span>
+                                        <% } %>
                                     </div>
                                 </article>
                             <% }); %>

@@ -10,6 +10,7 @@ const port = process.env.PORT || 3000;
 app.set("view engine", "ejs");
 app.use(express.static('public'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Create database pool
 const pool = new Pool({
@@ -160,6 +161,46 @@ app.get('/orders', async (req, res) => {
     } catch (err) {
         console.error('Error executing query:', err);
         res.status(500).send('Server error retrieving orders from database.');
+    }
+});
+
+// Manager Menu Page
+app.get('/manager', async (req, res) => {
+    try {
+        const query_res = await pool.query('SELECT * FROM menuitem ORDER BY category, menu_item_id;');
+        res.render('manager', {
+            items: query_res.rows,
+            savedId: Number(req.query.saved) || null,
+            errorId: Number(req.query.error) || null
+        });
+    } catch (err) {
+        console.error('Error executing query:', err);
+        res.status(500).send('Server error retrieving menu items from database.');
+    }
+});
+
+// Update a menu item's price and availability
+app.post('/manager/items/:id', async (req, res) => {
+    const menuItemId = Number(req.params.id);
+    const price = Number(req.body.price);
+    const isAvailable = req.body.is_available === 'on' ? 1 : 0;
+
+    if (!Number.isInteger(menuItemId)) {
+        return res.status(400).send('Invalid menu item.');
+    }
+    if (!/^\d{1,3}(\.\d{1,2})?$/.test(req.body.price ?? '') || price > 100) {
+        return res.redirect(`/manager?error=${menuItemId}#item-${menuItemId}`);
+    }
+
+    try {
+        await pool.query(
+            'UPDATE menuitem SET current_price = $1, is_available = $2 WHERE menu_item_id = $3;',
+            [price, isAvailable, menuItemId]
+        );
+        res.redirect(`/manager?saved=${menuItemId}#item-${menuItemId}`);
+    } catch (err) {
+        console.error('Error updating menu item:', err);
+        res.status(500).send('Server error updating menu item.');
     }
 });
 

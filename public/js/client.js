@@ -195,6 +195,7 @@ function setupMenu(cart) {
 
     document.querySelectorAll('.item-card').forEach(card => {
         card.addEventListener('click', () => {
+            if (card.classList.contains('sold-out')) return;
             selectedDrink = {
                 id: card.dataset.itemId,
                 name: card.dataset.itemName,
