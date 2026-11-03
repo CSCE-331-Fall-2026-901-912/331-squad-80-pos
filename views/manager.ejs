@@ -25,7 +25,55 @@
             <p class="eyebrow">Manager view</p>
             <h1 id="manager-heading">Manage menu</h1>
             <p class="manager-hint">Change a drink's price or mark it sold out. Sold-out drinks stay on the menu but can't be ordered.</p>
+            <h2 class="manager-category">Add New Drink</h2>
+<!-- Add New Drink Form -->
+<form class="manager-form" method="post" action="/manager/items/add">
 
+    <label class="manager-name">
+        <input
+            name="name"
+            type="text"
+            placeholder="Drink name"
+            required
+        >
+    </label>
+
+    <label class="manager-price">
+        <span>Price $</span>
+        <input
+            name="price"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            required
+        >
+    </label>
+
+    <label class="manager-available">
+        <input
+            name="is_available"
+            type="checkbox"
+            checked
+        >
+        <span>Available</span>
+    </label>
+
+    <label>
+        <span>Category</span>
+        <select name="category" required>
+            <% categories.forEach(function(cat) { %>
+                <option value="<%= cat %>"><%= cat %></option>
+            <% }); %>
+        </select>
+    </label>
+
+    <button class="manager-save" type="submit">
+        Add Drink
+    </button>
+
+</form>
+<!-- End of Add New Drink Form -->
             <% categories.forEach(function(cat) { %>
                 <h2 class="manager-category"><%= cat %></h2>
                 <ul class="manager-list">

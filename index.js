@@ -223,7 +223,52 @@ app.get('/manager', async (req, res) => {
         res.status(500).send('Server error retrieving menu items from database.');
     }
 });
+// Add a new menu item
+app.post('/manager/items/add', async (req, res) => {
+    const name = String(req.body.name ?? '').trim();
+    const category = String(req.body.category ?? '').trim();
+    const priceText = String(req.body.price ?? '');
+    const price = Number(priceText);
+    const isAvailable = req.body.is_available === 'on' ? 1 : 0;
 
+    if (
+        !name ||
+        !category ||
+        !/^\d{1,3}(\.\d{1,2})?$/.test(priceText) ||
+        price > 100
+    ) {
+        return res.status(400).send('Invalid drink information.');
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query('LOCK TABLE menuitem IN EXCLUSIVE MODE');
+
+        await client.query(
+            `INSERT INTO menuitem
+                (menu_item_id, name, category, current_price, is_available)
+             SELECT
+                COALESCE(MAX(menu_item_id), 0) + 1,
+                $1, $2, $3, $4
+             FROM menuitem`,
+            [name, category, price, isAvailable]
+        );
+
+        await client.query('COMMIT');
+
+        res.redirect('/manager');
+
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Error adding menu item:', err);
+        res.status(500).send('Server error adding menu item.');
+    } finally {
+        client.release();
+    }
+});
 // Update a menu item's price and availability
 app.post('/manager/items/:id', async (req, res) => {
     const menuItemId = Number(req.params.id);
