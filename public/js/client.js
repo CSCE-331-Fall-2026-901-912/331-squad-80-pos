@@ -247,10 +247,36 @@ function setupMenu(cart) {
 
         cart.splice(0, cart.length, ...nextCart);
         storageError.hidden = true;
-        renderMenuCart(cartItemsList, cartTotal, cart);
+        renderMenuCart(cartItemsList, cartTotal, cart, changeQuantity);
         updateCartBadge(cart);
         dialog.close();
     });
+
+    function changeQuantity(index, delta) {
+        const next = cart.map(line => ({
+            ...line, 
+            addons: [...line.addons]
+        }));
+
+        next[index].quantity += delta;
+        if (next[index].quantity <= 0) {
+            next.splice(index, 1);
+        }
+        
+        const error = document.getElementById('menu-cart-error');
+        if (!saveCart(next)) {
+            error.hidden = false;
+            return;
+        }
+        error.hidden = true;
+        cart.splice(0, cart.length, ...next);
+
+        renderMenuCart(cartItemsList, cartTotal, cart, changeQuantity);
+        updateCartBadge(cart);
+
+        const controls = cartItemsList.querySelectorAll('button');
+        controls[Math.min(index * 3, controls.length - 1)]?.focus();
+    }
 
     function updateDialogPrice() {
         if (!selectedDrink) return;
@@ -260,7 +286,7 @@ function setupMenu(cart) {
         );
     }
 
-    renderMenuCart(cartItemsList, cartTotal, cart);
+    renderMenuCart(cartItemsList, cartTotal, cart, changeQuantity);
     updateCartBadge(cart);
 }
 
@@ -273,7 +299,7 @@ function updateCartBadge(cart) {
     badge.setAttribute('aria-label', `${quantity} ${quantity === 1 ? 'item' : 'items'} in order`);
 }
 
-function renderMenuCart(list, total, cart) {
+function renderMenuCart(list, total, cart, changeQuantity) {
     if (!list || !total) return;
     list.replaceChildren();
 
@@ -287,7 +313,7 @@ function renderMenuCart(list, total, cart) {
     }
 
     let totalCents = 0;
-    cart.forEach(line => {
+    cart.forEach((line, index) => {
         const lineTotal = configuredPriceCents(line) * line.quantity;
         totalCents += lineTotal;
 
@@ -308,6 +334,32 @@ function renderMenuCart(list, total, cart) {
 
         const price = document.createElement('span');
         price.textContent = formatMoney(lineTotal);
+        const controls = document.createElement('div');
+        controls.className = 'quantity-controls';
+
+        [
+            ['-', -1, 'Decrease quantity of'],
+            ['+', 1, 'Increase quantity of'],
+            ['Remove', -line.quantity, 'Remove']
+        ].forEach(([label, delta, action]) =>  {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+
+            button.setAttribute(
+                'aria-label',
+                `${action} ${line.name}, ${line.sugar}, ${line.ice}, ${line.addons.join(', ') || 'no add-ons'}`
+            );
+
+            button.addEventListener('click', () => changeQuantity(index, delta));
+            controls.append(button);
+
+            details.append(controls);
+            row.append(details, price);
+            list.append(row);
+        });
+
+        details.append(controls);
         row.append(details, price);
         list.append(row);
     });

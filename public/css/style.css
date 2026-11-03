@@ -915,3 +915,41 @@ p {
         justify-self: end;
     }
 }
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.quantity-controls button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 999px;
+    background: #db4674;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.quantity-controls button:hover {
+    background: #c73562;
+}
+
+.quantity-controls button:focus-visible {
+    outline: 3px solid #165ec9;
+    outline-offset: 3px;
+}
+
+.quantity-controls button:last-child {
+    padding-inline: 16px;
+}
