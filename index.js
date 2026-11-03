@@ -86,7 +86,32 @@ app.post('/api/orders', async (req, res) => {
             return res.status(400).json({ error: 'Order contains an invalid item.' });
         }
         const addonCents = [...new Set(addons)].reduce((sum, id) => sum + ADD_ON_PRICES[id], 0);
-        parsed.push({ menuItemId, quantity, addonCents });
+        const validSugarLevels = ['0%', '25%', '50%', '75%', '100%'];
+        const validIceLevels = [
+            'No ice',
+            'Less ice',
+            'Regular ice',
+            'Extra ice'
+        ];
+
+        if (
+            !validSugarLevels.includes(line.sugar) ||
+            !validIceLevels.includes(line.ice) ||
+            !Array.isArray(line.addons)
+        ) {
+            return res.status(400).json({
+                error: 'Order contains invalid customization choices.'
+            });
+        }
+
+        parsed.push({
+            menuItemId,
+            quantity,
+            addonCents,
+            sugar: line.sugar,
+            ice: line.ice,
+            addons: [...new Set(addons)]
+        });
     }
 
     const client = await pool.connect();
@@ -122,9 +147,29 @@ app.post('/api/orders', async (req, res) => {
 
         for (const line of details) {
             await client.query(
-                `INSERT INTO orderdetail (order_detail_id, order_id, menu_item_id, quantity, unit_price)
-                 SELECT COALESCE(MAX(order_detail_id), 0) + 1, $1, $2, $3, $4 FROM orderdetail`,
-                [orderId, line.menuItemId, line.quantity, line.unitCents / 100]
+                `INSERT INTO orderdetail (
+                    order_detail_id,
+                    order_id,
+                    menu_item_id,
+                    quantity,
+                    unit_price,
+                    sugar_level,
+                    ice_level,
+                    addons
+                )
+                SELECT
+                    COALESCE(MAX(order_detail_id), 0) + 1,
+                    $1, $2, $3, $4, $5, $6, $7::jsonb
+                FROM orderdetail`,
+                [
+                    orderId,
+                    line.menuItemId,
+                    line.quantity,
+                    line.unitCents / 100,
+                    line.sugar,
+                    line.ice,
+                    JSON.stringify(line.addons)
+                ]
             );
         }
 
