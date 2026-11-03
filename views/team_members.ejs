@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Members</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="navbar">
+        <a class="logo" href="/" aria-label="Return to menu">Menu</a>
+    </header>
+
+    <main class="checkout-page">
+        <section class="checkout-card" aria-labelledby="team-heading">
+            <a class="back-to-menu" href="/">← Back to menu</a>
+            <p class="eyebrow">About us</p>
+            <h1 id="team-heading">Team members</h1>
+
+            <% if (teammembers.length === 0) { %>
+                <p>No team members found.</p>
+            <% } else { %>
+                <table class="team-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Section</th>
+                            <th scope="col">Favorite movie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% teammembers.forEach(function(member) { %>
+                            <tr>
+                                <td><%= member.student_name %></td>
+                                <td><%= member.section ?? '—' %></td>
+                                <td><%= member.favorite_movie || '—' %></td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            <% } %>
+        </section>
+    </main>
+</body>
+</html>

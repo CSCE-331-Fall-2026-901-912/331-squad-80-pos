@@ -59,7 +59,6 @@ app.get('/team_members', async (req, res) => {
         const query_res = await pool.query('SELECT * FROM teammembers;');
         
         const data = { teammembers: query_res.rows };
-        console.log(query_res.rows);
         
         res.render('team_members', data);
     } catch (err) {
