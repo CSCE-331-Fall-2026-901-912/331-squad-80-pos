@@ -73,6 +73,23 @@ input:focus-visible {
     text-decoration: none;
 }
 
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+}
+
+.nav-link {
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link[aria-current="page"] {
+    color: var(--pink-dark);
+}
+
 .checkout-btn,
 .proceed-checkout-btn {
     display: inline-flex;
@@ -970,4 +987,37 @@ p {
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+}
+
+.order-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.order-row {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.order-row-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: baseline;
+}
+
+.order-row-time {
+    flex: 1;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.order-row-items {
+    margin: 0.5rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.order-row-items span {
+    color: var(--muted);
 }

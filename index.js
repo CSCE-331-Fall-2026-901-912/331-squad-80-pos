@@ -138,6 +138,31 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
+// Recent Orders Page
+app.get('/orders', async (req, res) => {
+    try {
+        const query_res = await pool.query(
+            `SELECT o.order_id, o.total_cost,
+                    to_char(o.order_timestamp, 'Mon FMDD, YYYY FMHH12:MI AM') AS placed_at,
+                    json_agg(json_build_object(
+                        'name', m.name,
+                        'quantity', d.quantity,
+                        'unit_price', d.unit_price
+                    ) ORDER BY d.order_detail_id) AS items
+             FROM (SELECT * FROM orders ORDER BY order_id DESC LIMIT 25) o
+             JOIN orderdetail d ON d.order_id = o.order_id
+             JOIN menuitem m ON m.menu_item_id = d.menu_item_id
+             GROUP BY o.order_id, o.order_timestamp, o.total_cost
+             ORDER BY o.order_id DESC;`
+        );
+
+        res.render('orders', { orders: query_res.rows });
+    } catch (err) {
+        console.error('Error executing query:', err);
+        res.status(500).send('Server error retrieving orders from database.');
+    }
+});
+
 // Team Members Page
 app.get('/team_members', async (req, res) => {
     try {

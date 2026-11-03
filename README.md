@@ -8,6 +8,7 @@ Web point-of-sale for a drink shop, built with Express, EJS, and PostgreSQL. Dep
 - Customize sugar, ice, and paid add-ons for each drink
 - Review the cart and change quantities at checkout
 - Place an order, which saves it to the `orders` and `orderdetail` tables and shows the order number
+- Recent orders page at `/orders` listing the latest 25 orders with their drinks and totals
 - Team members page at `/team_members`
 
 ## Running locally
