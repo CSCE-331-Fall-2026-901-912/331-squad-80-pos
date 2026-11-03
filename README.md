@@ -10,7 +10,6 @@ Web point-of-sale for a drink shop, built with Express, EJS, and PostgreSQL. Dep
 - Place an order, which saves it to the `orders` and `orderdetail` tables and shows the order number
 - Recent orders page at `/orders` listing the latest 25 orders with their drinks and totals
 - Manager page at `/manager` to change drink prices and mark drinks sold out; sold-out drinks show greyed out on the menu and can't be ordered
-- Team members page at `/team_members`
 
 ## Running locally
 

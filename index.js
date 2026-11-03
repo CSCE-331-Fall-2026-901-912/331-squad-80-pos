@@ -204,20 +204,6 @@ app.post('/manager/items/:id', async (req, res) => {
     }
 });
 
-// Team Members Page
-app.get('/team_members', async (req, res) => {
-    try {
-        const query_res = await pool.query('SELECT * FROM teammembers;');
-        
-        const data = { teammembers: query_res.rows };
-        
-        res.render('team_members', data);
-    } catch (err) {
-        console.error('Error executing query:', err);
-        res.status(500).send('Server error retrieving data from database.');
-    }
-});
-
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`);
 });

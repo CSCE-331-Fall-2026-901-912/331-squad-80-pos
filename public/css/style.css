@@ -970,25 +970,6 @@ p {
 .quantity-controls button:last-child {
     padding-inline: 16px;
 }
-.team-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.team-table th,
-.team-table td {
-    padding: 0.75rem 0.5rem;
-    border-bottom: 1px solid var(--line);
-    text-align: left;
-}
-
-.team-table th {
-    color: var(--muted);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
 .order-list {
     margin: 0;
     padding: 0;
