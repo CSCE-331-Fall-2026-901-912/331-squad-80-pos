@@ -1,6 +1,3 @@
-<%
-    const categories = [...new Set(items.map(item => item.category || 'Uncategorized'))];
-%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,6 +7,26 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <% if (!managerUnlocked) { %>
+    <main>
+        <h1>Manager sign-in</h1>
+        <% if (loginError) { %>
+            <p role="alert"><%= loginError %></p>
+        <% } %>
+
+        <form method="post" action="/manager/login">
+            <label for="password">Manager password</label>
+            <input id="password" name="password" type="password"
+                   autocomplete="current-password" required>
+            <button type="submit">Unlock</button>
+        </form>
+
+        <a href="/">Back to the POS portal</a>
+    </main>
+    <% } else { %>
+    <%
+        const categories = [...new Set(items.map(item => item.category || 'Uncategorized'))];
+    %>
     <header class="navbar">
         <a class="logo" href="/" aria-label="Return to menu">Menu</a>
         <nav class="nav-links" aria-label="Main">
@@ -25,6 +42,9 @@
             <a class="back-to-menu" href="/">← Back to menu</a>
             <p class="eyebrow">Manager view</p>
             <h1 id="manager-heading">Manage menu</h1>
+            <form method="post" action="/manager/logout">
+                <button type="submit">Lock manager access</button>
+            </form>
             <p class="manager-hint">Change a drink's price or mark it sold out. Sold-out drinks stay on the menu but can't be ordered.</p>
             <h2 class="manager-category">Add New Drink</h2>
 <!-- Add New Drink Form -->
@@ -106,5 +126,6 @@
             <% }); %>
         </section>
     </main>
+    <% } %>
 </body>
 </html>
