@@ -256,14 +256,15 @@ function setupMenu(cart) {
         dialog.close();
     });
 
-    function changeQuantity(index, delta) {
+    function changeQuantity(index, delta, buttonIndex) {
         const next = cart.map(line => ({
             ...line, 
             addons: [...line.addons]
         }));
 
         next[index].quantity += delta;
-        if (next[index].quantity <= 0) {
+        const removed = next[index].quantity <= 0;
+        if (removed) {
             next.splice(index, 1);
         }
         
@@ -278,8 +279,11 @@ function setupMenu(cart) {
         renderMenuCart(cartItemsList, cartTotal, cart, changeQuantity);
         updateCartBadge(cart);
 
-        const controls = cartItemsList.querySelectorAll('button');
-        controls[Math.min(index * 3, controls.length - 1)]?.focus();
+        const rows = cartItemsList.querySelectorAll('.cart-item-row');
+        const targetRow = rows[Math.min(index, rows.length - 1)];
+        const targetButton = targetRow?.querySelectorAll('button')[removed ? 0 : buttonIndex];
+
+        (targetButton ?? document.getElementById('cart-heading'))?.focus();
     }
 
     function updateDialogPrice() {
@@ -345,7 +349,7 @@ function renderMenuCart(list, total, cart, changeQuantity) {
             ['-', -1, 'Decrease quantity of'],
             ['+', 1, 'Increase quantity of'],
             ['Remove', -line.quantity, 'Remove']
-        ].forEach(([label, delta, action]) =>  {
+        ].forEach(([label, delta, action], buttonIndex) =>  {
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = label;
@@ -355,7 +359,7 @@ function renderMenuCart(list, total, cart, changeQuantity) {
                 `${action} ${line.name}, ${line.sugar}, ${line.ice}, ${line.addons.join(', ') || 'no add-ons'}`
             );
 
-            button.addEventListener('click', () => changeQuantity(index, delta));
+            button.addEventListener('click', () => changeQuantity(index, delta, buttonIndex));
             controls.append(button);
 
             details.append(controls);
@@ -486,7 +490,7 @@ function renderCheckout(cart, confirmedOrder = null) {
         confirmButton.hidden = true;
         if (startNewOrder) startNewOrder.hidden = false;
         updateCartBadge([]);
-        confirmation?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        heading?.focus();
     });
 
     startNewOrder?.addEventListener('click', event => {

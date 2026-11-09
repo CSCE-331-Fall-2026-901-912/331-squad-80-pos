@@ -107,7 +107,7 @@
 
         <aside class="cart-sidebar" aria-labelledby="cart-heading">
             <div class="cart-box">
-                <h2 id="cart-heading">Your order</h2>
+                <h2 id="cart-heading" tabindex="-1">Your order</h2>
                 <p id="menu-cart-error" class="storage-error" role="alert" hidden>
                     Your change could not be saved. Allow browser storage and try again.
                 </p>
@@ -146,7 +146,7 @@
             <div class="customization-groups">
                 <div class="customization-group">
                     <label for="sugar-level">Sugar level <span>Free</span></label>
-                    <select id="sugar-level" name="sugar">
+                    <select id="sugar-level" name="sugar" autofocus>
                         <option value="0%">0%</option>
                         <option value="25%">25%</option>
                         <option value="50%">50%</option>
