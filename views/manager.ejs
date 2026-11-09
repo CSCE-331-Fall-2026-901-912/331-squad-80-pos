@@ -8,20 +8,25 @@
 </head>
 <body>
     <% if (!managerUnlocked) { %>
-    <main>
-        <h1>Manager sign-in</h1>
-        <% if (loginError) { %>
-            <p role="alert"><%= loginError %></p>
-        <% } %>
+    <main class="checkout-page manager-login-page">
+        <section class="checkout-card" aria-labelledby="manager-login-heading">
+            <a class="back-to-menu" href="/">← Back to the POS portal</a>
 
-        <form method="post" action="/manager/login">
-            <label for="password">Manager password</label>
-            <input id="password" name="password" type="password"
-                   autocomplete="current-password" required>
-            <button type="submit">Unlock</button>
-        </form>
+            <p class="eyebrow">Manager access</p>
+            <h1 id="manager-login-heading">Manager sign-in</h1>
 
-        <a href="/">Back to the POS portal</a>
+            <form class="manager-login-form" method="post" action="/manager/login">
+                <label for="password">Manager password</label>
+                <input id="password" name="password" type="password"
+                    autocomplete="current-password" required>
+
+                <% if (loginError) { %>
+                    <p class="manager-status-error" role="alert"><%= loginError %></p>
+                <% } %>
+
+                <button class="proceed-checkout-btn" type="submit">Unlock dashboard</button>
+            </form>
+        </section>
     </main>
     <% } else { %>
     <%
