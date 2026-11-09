@@ -426,6 +426,24 @@ app.post('/manager/items/:id', async (req, res) => {
     }
 });
 
+// Cashier Behind-the-Counter Interface
+app.get('/cashier', async (req, res) => {
+    try {
+        const query_res = await pool.query('SELECT * FROM menuitem WHERE is_available = 1 ORDER BY category, menu_item_id;');
+        const items = query_res.rows;
+        const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
+        
+        res.render('cashier', {
+            vendor: process.env.VENDOR_NAME || '80s Bubble Tea',
+            items: items,
+            categories: categories
+        });
+    } catch (err) {
+        console.error('Error loading cashier interface:', err);
+        res.status(500).send('Server error loading cashier interface.');
+    }
+});
+
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`);
 });
