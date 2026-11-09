@@ -8,26 +8,7 @@
 </head>
 <body>
     <% if (!managerUnlocked) { %>
-    <main class="checkout-page manager-login-page">
-        <section class="checkout-card" aria-labelledby="manager-login-heading">
-            <a class="back-to-menu" href="/">← Back to the POS portal</a>
-
-            <p class="eyebrow">Manager access</p>
-            <h1 id="manager-login-heading">Manager sign-in</h1>
-
-            <form class="manager-login-form" method="post" action="/manager/login">
-                <label for="password">Manager password</label>
-                <input id="password" name="password" type="password"
-                    autocomplete="current-password" required>
-
-                <% if (loginError) { %>
-                    <p class="manager-status-error" role="alert"><%= loginError %></p>
-                <% } %>
-
-                <button class="proceed-checkout-btn" type="submit">Unlock dashboard</button>
-            </form>
-        </section>
-    </main>
+    <%- include('partials/staff-login', { label: 'Manager', action: '/manager/login', button: 'Unlock dashboard', loginError }) %>
     <% } else { %>
     <%
         const categories = [...new Set(items.map(item => item.category || 'Uncategorized'))];
