@@ -14,6 +14,8 @@ const ADD_ONS_BY_ID = new Map(ADD_ONS.map(addon => [addon.id, addon]));
 let cartStorageUnavailable = false;
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupKioskAccessibility();
+    setupKioskContrast();
     const cart = readCart();
 
     if (document.body.dataset.page === 'menu') {
@@ -254,14 +256,15 @@ function setupMenu(cart) {
         dialog.close();
     });
 
-    function changeQuantity(index, delta) {
+    function changeQuantity(index, delta, buttonIndex) {
         const next = cart.map(line => ({
             ...line, 
             addons: [...line.addons]
         }));
 
         next[index].quantity += delta;
-        if (next[index].quantity <= 0) {
+        const removed = next[index].quantity <= 0;
+        if (removed) {
             next.splice(index, 1);
         }
         
@@ -276,8 +279,11 @@ function setupMenu(cart) {
         renderMenuCart(cartItemsList, cartTotal, cart, changeQuantity);
         updateCartBadge(cart);
 
-        const controls = cartItemsList.querySelectorAll('button');
-        controls[Math.min(index * 3, controls.length - 1)]?.focus();
+        const rows = cartItemsList.querySelectorAll('.cart-item-row');
+        const targetRow = rows[Math.min(index, rows.length - 1)];
+        const targetButton = targetRow?.querySelectorAll('button')[removed ? 0 : buttonIndex];
+
+        (targetButton ?? document.getElementById('cart-heading'))?.focus();
     }
 
     function updateDialogPrice() {
@@ -343,7 +349,7 @@ function renderMenuCart(list, total, cart, changeQuantity) {
             ['-', -1, 'Decrease quantity of'],
             ['+', 1, 'Increase quantity of'],
             ['Remove', -line.quantity, 'Remove']
-        ].forEach(([label, delta, action]) =>  {
+        ].forEach(([label, delta, action], buttonIndex) =>  {
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = label;
@@ -353,7 +359,7 @@ function renderMenuCart(list, total, cart, changeQuantity) {
                 `${action} ${line.name}, ${line.sugar}, ${line.ice}, ${line.addons.join(', ') || 'no add-ons'}`
             );
 
-            button.addEventListener('click', () => changeQuantity(index, delta));
+            button.addEventListener('click', () => changeQuantity(index, delta, buttonIndex));
             controls.append(button);
 
             details.append(controls);
@@ -484,7 +490,7 @@ function renderCheckout(cart, confirmedOrder = null) {
         confirmButton.hidden = true;
         if (startNewOrder) startNewOrder.hidden = false;
         updateCartBadge([]);
-        confirmation?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        heading?.focus();
     });
 
     startNewOrder?.addEventListener('click', event => {
@@ -517,4 +523,93 @@ function appendBreakdown(container, label, amount) {
     price.textContent = amount;
     row.append(name, price);
     container.append(row);
+}
+
+function setupKioskAccessibility() {
+    const key = 'kiosk-text-size';
+    const sizes = [100, 125, 150, 175, 200];
+    const controls = document.querySelector('.kiosk-text-controls');
+    if (!controls) return;
+    const status = controls.querySelector('output');
+    const decrease = controls.querySelector('[data-text-change="-1"]');
+    const increase = controls.querySelector('[data-text-change="1"]');
+    let size = 100;
+
+    function render() {
+        document.documentElement.style.fontSize = `${size}%`;
+        document.documentElement.dataset.kioskTextSize = size;
+        status.value = `${size}%`;
+        decrease.setAttribute('aria-disabled', String(size === sizes[0]));
+        increase.setAttribute('aria-disabled', String(size === sizes.at(-1)));
+    }
+
+    function restore() {
+        try {
+            const saved = Number(localStorage.getItem(key));
+            size = sizes.includes(saved) ? saved : sizes[0];
+        } catch {
+            // Keep the current size if browser storage is unavailable.
+        }
+        render();
+    }
+
+    for (const button of [decrease, increase]) {
+        button.addEventListener('click', () => {
+            const next = sizes[sizes.indexOf(size) + Number(button.dataset.textChange)];
+            if (next === undefined) return;
+
+            size = next;
+            render();
+
+            try {
+                localStorage.setItem(key, String(size));
+            } catch {
+                // Text resizing still works on this page without storage.
+            }
+        });
+    }
+
+    restore();
+    controls.hidden = false;
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) restore();
+    });
+}
+
+function setupKioskContrast() {
+    const button = document.getElementById('kiosk-high-contrast');
+    if (!button) return;
+
+    const storageKey = 'kiosk-high-contrast';
+    const root = document.documentElement;
+
+    function applyContrast(enabled) {
+        root.toggleAttribute('data-kiosk-high-contrast', enabled);
+        button.textContent = enabled ? 'Low contrast' : 'High contrast';
+    }
+
+    function restoreContrast() {
+        try {
+            applyContrast(localStorage.getItem(storageKey) === 'true');
+        } catch {
+            // Keep the current setting if browser storage is unavailable.
+        }
+    }
+
+    button.addEventListener('click', () => {
+        const enabled = !root.hasAttribute('data-kiosk-high-contrast');
+        applyContrast(enabled);
+
+        try {
+            localStorage.setItem(storageKey, String(enabled));
+        } catch {
+            // The toggle still works on the current page.
+        }
+    });
+
+    restoreContrast();
+
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) restoreContrast();
+    });
 }
