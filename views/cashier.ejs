@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashier POS - <%= vendor %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body { margin: 0; font-family: system-ui, sans-serif; background: #f4f6f8; color: #111; display: flex; flex-direction: column; height: 100vh; overflow: hidden; touch-action: manipulation; }
+        
+        /* Cashier Workspace Layout Below Navbar */
+        .cashier-workspace { display: flex; flex: 1; height: calc(100vh - 60px); overflow: hidden; }
+        .menu-section { flex: 1; display: flex; flex-direction: column; padding: 1.5rem; border-right: 2px solid #ddd; background: #fff; overflow: hidden; }
+        .cart-section { width: 440px; display: flex; flex-direction: column; background: #fff; padding: 1.5rem; box-shadow: -4px 0 15px rgba(0,0,0,0.05); }
+        
+        .categories { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        .cat-btn { padding: 0.75rem 1.25rem; font-size: 1rem; font-weight: 600; border: 2px solid #ccc; background: #f8f9fa; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+        .cat-btn.active { background: #007bff; color: white; border-color: #006fe6; }
+        
+        .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; overflow-y: auto; flex: 1; padding-right: 0.25rem; }
+        .item-card { background: #fafbfc; border: 2px solid #e1e4e8; border-radius: 10px; padding: 1rem; text-align: left; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; transition: transform 0.1s, background 0.1s; }
+        .item-card:active { transform: scale(0.97); background: #f0f3f6; }
+        .item-name { font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem; }
+        .item-price { font-weight: 600; color: #28a745; font-size: 1.1rem; }
+        
+        .cart-items { flex: 1; overflow-y: auto; border: 1px solid #e1e4e8; border-radius: 8px; margin-bottom: 1rem; padding: 0.75rem; background: #fafbfc; }
+        .cart-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+        .cart-row-details { font-size: 0.8rem; color: #666; }
+        
+        .totals-box { font-size: 1.2rem; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 1rem; padding-top: 0.5rem; border-top: 2px solid #ddd; }
+        .submit-btn { background: #28a745; color: white; border: none; padding: 1rem; font-size: 1.25rem; font-weight: 700; border-radius: 8px; cursor: pointer; width: 100%; text-align: center; }
+        .submit-btn:active { background: #218838; }
+        
+        .qty-controls { display: flex; align-items: center; gap: 0.5rem; }
+        .qty-btn { background: #e2e8f0; border: none; padding: 0.25rem 0.6rem; font-weight: bold; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation Bar matching Manager & Kiosk screens -->
+    <header class="navbar">
+        <a class="logo" href="/" aria-label="Return to menu">Menu</a>
+        <nav class="nav-links" aria-label="Main">
+            <a href="/checkout" class="checkout-btn">Checkout</a>
+        </nav>
+    </header>
+
+    <!-- Cashier Power-User Interface -->
+    <div class="cashier-workspace">
+        <div class="menu-section">
+            <h2>Behind-the-Counter POS — <%= vendor %></h2>
+            <div class="categories">
+                <button class="cat-btn active" onclick="filterCategory('all', this)">All Items</button>
+                <% categories.forEach(cat => { %>
+                    <button class="cat-btn" onclick="filterCategory('<%= cat %>', this)"><%= cat %></button>
+                <% }) %>
+            </div>
+            <div class="item-grid" id="itemGrid">
+                <% items.forEach(item => { %>
+                    <div class="item-card" data-category="<%= item.category || 'Uncategorized' %>" onclick="addToCart(<%= item.menu_item_id %>, '<%= item.name.replace(/'/g, "\\'") %>', <%= item.current_price %>)">
+                        <div class="item-name"><%= item.name %></div>
+                        <div class="item-price">$<%= Number(item.current_price).toFixed(2) %></div>
+                    </div>
+                <% }) %>
+            </div>
+        </div>
+
+        <div class="cart-section">
+            <h3>Current Order</h3>
+            <div class="cart-items" id="cartList">
+                <p style="color: #888; text-align: center; margin-top: 3rem;">Tap items on the left to build order</p>
+            </div>
+            <div class="totals-box">
+                <span>Total:</span>
+                <span id="cartTotal">$0.00</span>
+            </div>
+            <button class="submit-btn" onclick="submitOrder()">Submit Order</button>
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+
+        function filterCategory(category, btn) {
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.item-card').forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function addToCart(id, name, price) {
+            const existing = cart.find(i => i.id === id && i.sugar === '100%' && i.ice === 'Regular ice' && i.addons.length === 0);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                cart.push({
+                    id: id,
+                    name: name,
+                    price: price,
+                    quantity: 1,
+                    sugar: '100%',
+                    ice: 'Regular ice',
+                    addons: []
+                });
+            }
+            renderCart();
+        }
+
+        function updateQty(index, delta) {
+            cart[index].quantity += delta;
+            if (cart[index].quantity <= 0) {
+                cart.splice(index, 1);
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const listEl = document.getElementById('cartList');
+            const totalEl = document.getElementById('cartTotal');
+            if (cart.length === 0) {
+                listEl.innerHTML = '<p style="color: #888; text-align: center; margin-top: 3rem;">Tap items on the left to build order</p>';
+                totalEl.innerText = '$0.00';
+                return;
+            }
+
+            let html = '';
+            let total = 0;
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                html += `
+                    <div class="cart-row">
+                        <div>
+                            <strong>${item.name}</strong>
+                            <div class="cart-row-details">$${Number(item.price).toFixed(2)} each</div>
+                        </div>
+                        <div class="qty-controls">
+                            <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+                            <span>${item.quantity}</span>
+                            <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+            totalEl.innerText = '$' + total.toFixed(2);
+        }
+
+        async function submitOrder() {
+            if (cart.length === 0) {
+                alert('Cart is empty.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: cart })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Order #${data.orderId} successfully submitted! Database updated.`);
+                    cart = [];
+                    renderCart();
+                } else {
+                    const err = await response.json();
+                    alert('Error: ' + (err.error || 'Failed to submit order.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error submitting order.');
+            }
+        }
+    </script>
+</body>
+</html>
