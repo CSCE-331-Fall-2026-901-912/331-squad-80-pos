@@ -1250,3 +1250,40 @@ p {
     min-height: 48px;
     padding: 14px 24px;
 }
+
+.manager-login-page {
+    max-width: 460px;
+    padding-top: clamp(2rem, 8vh, 5rem);
+}
+
+.manager-login-page .back-to-menu {
+    display: inline-block;
+}
+
+.manager-login-form {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.manager-login-form label {
+    font-weight: 700;
+}
+
+.manager-login-form input {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+}
+
+.manager-login-form input:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.manager-login-form .manager-status-error {
+    margin: 0;
+}
