@@ -15,6 +15,7 @@ let cartStorageUnavailable = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupKioskAccessibility();
+    setupKioskContrast();
     const cart = readCart();
 
     if (document.body.dataset.page === 'menu') {
@@ -568,5 +569,43 @@ function setupKioskAccessibility() {
     controls.hidden = false;
     window.addEventListener('pageshow', event => {
         if (event.persisted) restore();
+    });
+}
+
+function setupKioskContrast() {
+    const button = document.getElementById('kiosk-high-contrast');
+    if (!button) return;
+
+    const storageKey = 'kiosk-high-contrast';
+    const root = document.documentElement;
+
+    function applyContrast(enabled) {
+        root.toggleAttribute('data-kiosk-high-contrast', enabled);
+        button.textContent = enabled ? 'Low contrast' : 'High contrast';
+    }
+
+    function restoreContrast() {
+        try {
+            applyContrast(localStorage.getItem(storageKey) === 'true');
+        } catch {
+            // Keep the current setting if browser storage is unavailable.
+        }
+    }
+
+    button.addEventListener('click', () => {
+        const enabled = !root.hasAttribute('data-kiosk-high-contrast');
+        applyContrast(enabled);
+
+        try {
+            localStorage.setItem(storageKey, String(enabled));
+        } catch {
+            // The toggle still works on the current page.
+        }
+    });
+
+    restoreContrast();
+
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) restoreContrast();
     });
 }
