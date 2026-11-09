@@ -14,6 +14,7 @@ const ADD_ONS_BY_ID = new Map(ADD_ONS.map(addon => [addon.id, addon]));
 let cartStorageUnavailable = false;
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupKioskAccessibility();
     const cart = readCart();
 
     if (document.body.dataset.page === 'menu') {
@@ -517,4 +518,55 @@ function appendBreakdown(container, label, amount) {
     price.textContent = amount;
     row.append(name, price);
     container.append(row);
+}
+
+function setupKioskAccessibility() {
+    const key = 'kiosk-text-size';
+    const sizes = [100, 125, 150, 175, 200];
+    const controls = document.querySelector('.kiosk-text-controls');
+    if (!controls) return;
+    const status = controls.querySelector('output');
+    const decrease = controls.querySelector('[data-text-change="-1"]');
+    const increase = controls.querySelector('[data-text-change="1"]');
+    let size = 100;
+
+    function render() {
+        document.documentElement.style.fontSize = `${size}%`;
+        document.documentElement.dataset.kioskTextSize = size;
+        status.value = `${size}%`;
+        decrease.setAttribute('aria-disabled', String(size === sizes[0]));
+        increase.setAttribute('aria-disabled', String(size === sizes.at(-1)));
+    }
+
+    function restore() {
+        try {
+            const saved = Number(localStorage.getItem(key));
+            size = sizes.includes(saved) ? saved : sizes[0];
+        } catch {
+            // Keep the current size if browser storage is unavailable.
+        }
+        render();
+    }
+
+    for (const button of [decrease, increase]) {
+        button.addEventListener('click', () => {
+            const next = sizes[sizes.indexOf(size) + Number(button.dataset.textChange)];
+            if (next === undefined) return;
+
+            size = next;
+            render();
+
+            try {
+                localStorage.setItem(key, String(size));
+            } catch {
+                // Text resizing still works on this page without storage.
+            }
+        });
+    }
+
+    restore();
+    controls.hidden = false;
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) restore();
+    });
 }

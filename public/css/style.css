@@ -1287,3 +1287,121 @@ p {
 .manager-login-form .manager-status-error {
     margin: 0;
 }
+
+.kiosk-text-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.5rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
+.kiosk-text-controls button {
+    padding: 0.25em 0.55em;
+    border: 1px solid var(--blue-dark);
+    border-radius: 8px;
+    background: var(--soft-blue);
+    color: var(--blue-dark);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.kiosk-text-controls button[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: default;
+}
+
+:where(body[data-page="menu"], body[data-page="checkout"]) .kiosk-text-controls button,
+:where(body[data-page="menu"], body[data-page="checkout"]) .navbar a,
+:where(body[data-page="menu"], body[data-page="checkout"]) .category-tab,
+:where(body[data-page="menu"], body[data-page="checkout"]) .category-card,
+:where(body[data-page="menu"], body[data-page="checkout"]) .item-select,
+:where(body[data-page="menu"], body[data-page="checkout"]) .back-to-categories,
+:where(body[data-page="menu"], body[data-page="checkout"]) .back-to-menu,
+:where(body[data-page="menu"], body[data-page="checkout"]) .dialog-close,
+:where(body[data-page="menu"], body[data-page="checkout"]) .customization-group select,
+:where(body[data-page="menu"], body[data-page="checkout"]) .addon-option,
+:where(body[data-page="menu"], body[data-page="checkout"]) .add-to-order-btn,
+:where(body[data-page="menu"], body[data-page="checkout"]) .quantity-controls button,
+:where(body[data-page="menu"], body[data-page="checkout"]) .proceed-checkout-btn,
+:where(body[data-page="menu"], body[data-page="checkout"]) .confirm-order-btn {
+    min-width: 48px;
+    min-height: 48px;
+}
+
+:where(body[data-page="menu"], body[data-page="checkout"]) .navbar,
+:where(body[data-page="menu"], body[data-page="checkout"]) .nav-links,
+:where(body[data-page="menu"], body[data-page="checkout"]) .item-footer,
+:where(body[data-page="menu"], body[data-page="checkout"]) .dialog-price-copy,
+:where(body[data-page="menu"], body[data-page="checkout"]) .dialog-total-row,
+:where(body[data-page="menu"], body[data-page="checkout"]) .cart-total-section,
+:where(body[data-page="menu"], body[data-page="checkout"]) .checkout-total,
+:where(body[data-page="menu"], body[data-page="checkout"]) .price-breakdown-row,
+:where(body[data-page="menu"], body[data-page="checkout"]) .quantity-controls {
+    flex-wrap: wrap;
+}
+
+:where(body[data-page="menu"], body[data-page="checkout"]) .navbar,
+:where(body[data-page="menu"], body[data-page="checkout"]) .nav-links,
+:where(body[data-page="menu"], body[data-page="checkout"]) .quantity-controls {
+    gap: 8px;
+}
+
+:where(body[data-page="menu"], body[data-page="checkout"]) .navbar a,
+:where(body[data-page="menu"], body[data-page="checkout"]) .back-to-menu,
+:where(body[data-page="menu"], body[data-page="checkout"]) .back-to-categories {
+    display: inline-flex;
+    align-items: center;
+}
+
+.menu-category-nav {
+    top: 5rem;
+}
+
+.quantity-controls button {
+    font-size: 0.875rem;
+}
+
+.cart-item-name,
+.category-name,
+.item-info,
+.dialog-heading h2,
+.checkout-item {
+    overflow-wrap: anywhere;
+}
+
+.addon-options {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+}
+
+.addon-option {
+    flex-wrap: wrap;
+}
+
+html[data-kiosk-text-size]:not([data-kiosk-text-size="100"]) .navbar,
+html[data-kiosk-text-size]:not([data-kiosk-text-size="100"]) .menu-category-nav,
+html[data-kiosk-text-size]:not([data-kiosk-text-size="100"]) .cart-sidebar {
+    position: static;
+}
+
+@media (max-width: 520px) {
+    :where(body[data-page="menu"], body[data-page="checkout"]) .navbar,
+    :where(body[data-page="menu"], body[data-page="checkout"]) .menu-category-nav {
+        position: static;
+    }
+
+    html[data-kiosk-text-size]:not([data-kiosk-text-size="100"]) .item-card {
+        display: flex;
+    }
+
+    html[data-kiosk-text-size]:not([data-kiosk-text-size="100"]) .item-select {
+        display: flex;
+    }
+
+    html[data-kiosk-text-size]:not([data-kiosk-text-size="100"]) .item-art {
+        height: 164px;
+    }
+}
