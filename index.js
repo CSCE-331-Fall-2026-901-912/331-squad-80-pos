@@ -433,10 +433,17 @@ app.get('/cashier', async (req, res) => {
         const items = query_res.rows;
         const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
         
+        // Query total orders for today. 
+        const count_res = await pool.query(
+            "SELECT COUNT(*) as count FROM orders WHERE DATE(order_timestamp) = CURRENT_DATE;"
+        );
+        const todayCount = parseInt(count_res.rows[0]?.count) || 0;
+
         res.render('cashier', {
             vendor: process.env.VENDOR_NAME || '80s Bubble Tea',
             items: items,
-            categories: categories
+            categories: categories,
+            todayCount: todayCount
         });
     } catch (err) {
         console.error('Error loading cashier interface:', err);
