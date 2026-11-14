@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,26 +8,26 @@
     <link rel="stylesheet" href="/css/style.css">
     <style>
         body { margin: 0; font-family: system-ui, sans-serif; background: #f4f6f8; color: #111; display: flex; flex-direction: column; height: 100vh; overflow: hidden; touch-action: manipulation; }
-        
+
         /* Top Navigation Bar */
         .navbar { display: flex; justify-content: space-between; align-items: center; padding: 0 1.5rem; height: 60px; background: #fff; border-bottom: 1px solid #ddd; }
         .logo { font-weight: bold; font-size: 1.1rem; text-decoration: none; color: #111; }
-        
+
         /* Daily Orders Tracker in Navbar */
         .daily-tracker { font-size: 0.95rem; font-weight: 600; color: #444; background: #f1f3f5; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid #dcdfe6; }
-        
+
         /* Cashier Workspace Layout */
         .cashier-workspace { display: flex; flex: 1; height: calc(100vh - 60px); overflow: hidden; }
         .menu-section { flex: 1; display: flex; flex-direction: column; padding: 1.5rem; border-right: 2px solid #ddd; background: #fff; overflow: hidden; }
-        
+
         /* Reduced width Current Order panel */
         .cart-section { width: 360px; display: flex; flex-direction: column; background: #fff; padding: 1.25rem; box-shadow: -4px 0 15px rgba(0,0,0,0.05); }
-        
+
         /* Category Navigation Bar */
         .categories { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1rem; }
         .cat-btn { padding: 0.6rem 1rem; font-size: 0.95rem; font-weight: 600; border: 2px solid #ccc; background: #f8f9fa; border-radius: 8px; cursor: pointer; white-space: nowrap; }
         .cat-btn.active { background: #007bff; color: white; border-color: #006fe6; }
-        
+
         /* Text-only Item Grid */
         .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; overflow-y: auto; flex: 1; padding-right: 0.25rem; }
         .item-card { background: #fafbfc; border: 2px solid #e1e4e8; border-radius: 8px; padding: 0.85rem; text-align: left; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; min-height: 85px; transition: transform 0.1s, background 0.1s; }
@@ -35,19 +36,43 @@
         .item-price { font-weight: 600; color: #28a745; font-size: 0.95rem; }
         .sold-out-label { color: #dc3545; font-size: 0.75rem; font-weight: bold; }
 
+        /* Low-stock indicators */
+        .low-stock-label {
+            color: #856404;
+            background: #fff3cd;
+            border: 1px solid #ffe08a;
+            border-radius: 4px;
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            margin-top: 0.3rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .stock-remaining {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: 0.2rem;
+        }
+
+        .item-card.sold-out {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         /* Cart & Checkout Panel */
         .cart-items { flex: 1; overflow-y: auto; border: 1px solid #e1e4e8; border-radius: 8px; margin-bottom: 1rem; padding: 0.75rem; background: #fafbfc; }
         .cart-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 0.6rem 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
         .cart-row-details { font-size: 0.75rem; color: #666; margin-top: 0.15rem; }
-        
+
         .totals-box { font-size: 1.15rem; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 2px solid #ddd; }
-        
+
         /* Small Status Feedback Message */
         .status-msg { font-size: 0.8rem; color: #28a745; text-align: center; height: 1.2rem; margin-bottom: 0.5rem; font-weight: 600; }
 
         .submit-btn { background: #28a745; color: white; border: none; padding: 0.9rem; font-size: 1.15rem; font-weight: 700; border-radius: 8px; cursor: pointer; width: 100%; text-align: center; }
         .submit-btn:active { background: #218838; }
-        
+
         .qty-controls { display: flex; align-items: center; gap: 0.4rem; }
         .qty-btn { background: #e2e8f0; border: none; padding: 0.2rem 0.5rem; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
 
@@ -78,7 +103,7 @@
     <div class="cashier-workspace">
         <div class="menu-section">
             <h2>Behind-the-Counter POS</h2>
-            
+
             <div class="categories">
                 <button class="cat-btn active" onclick="filterCategory('all', this)">All Items</button>
                 <% categories.forEach(cat => { %>
@@ -88,20 +113,29 @@
 
             <div class="item-grid" id="itemGrid">
                 <% items.forEach(item => { %>
-                    <% 
+                    <%
                         const itemId = item.menu_item_id || item.id;
-                        const soldOut = Number(item.is_available) !== 1;
+                        const stock = Number(item.quantity_in_stock);
+                        const threshold = Number(item.low_stock_threshold);
+                        const soldOut = Number(item.is_available) !== 1 || stock <= 0;
+                        const lowStock = !soldOut && stock <= threshold;
                     %>
-                    <div class="item-card <%= soldOut ? 'sold-out' : '' %>" 
-                         data-category="<%= item.category || 'Uncategorized' %>" 
+                    <div class="item-card <%= soldOut ? 'sold-out' : '' %>"
+                         data-category="<%= item.category || 'Uncategorized' %>"
                          <% if (!soldOut) { %>
                              onclick="openCustomizeModal(<%= itemId %>, '<%= item.name.replace(/'/g, "\\'") %>', <%= item.current_price %>)"
                          <% } %>
                          style="<%= soldOut ? 'opacity: 0.5; cursor: not-allowed;' : '' %>">
                         <div>
                             <div class="item-name"><%= item.name %></div>
+
                             <% if (soldOut) { %>
                                 <span class="sold-out-label">Sold out</span>
+                            <% } else if (lowStock) { %>
+                                <span class="low-stock-label">⚠ Low stock</span>
+                                <div class="stock-remaining">
+                                    Only <%= stock %> remaining
+                                </div>
                             <% } %>
                         </div>
                         <div class="item-price">$<%= Number(item.current_price).toFixed(2) %></div>
@@ -116,7 +150,7 @@
             <div class="cart-items" id="cartList">
                 <p style="color: #888; text-align: center; margin-top: 3rem;">Tap items on the left to build order</p>
             </div>
-            
+
             <div class="totals-box">
                 <span>Total:</span>
                 <span id="cartTotal">$0.00</span>
@@ -124,7 +158,7 @@
 
             <!-- Small inline status feedback instead of browser alert boxes -->
             <div class="status-msg" id="statusMessage"></div>
-            
+
             <button class="submit-btn" onclick="submitOrder()">Submit Order</button>
         </div>
     </div>
@@ -178,7 +212,7 @@
     <script>
         let cart = [];
         let activeItemData = null;
-        
+
         // Initialize from server-rendered database value
         let dailyOrderCount = parseInt(document.getElementById('dailyOrderCount').innerText) || 0;
 
@@ -200,7 +234,7 @@
             document.getElementById('modalSugar').value = '100%';
             document.getElementById('modalIce').value = 'Regular ice';
             document.querySelectorAll('input[name="modalAddon"]').forEach(cb => cb.checked = false);
-            
+
             document.getElementById('customizeModal').style.display = 'flex';
         }
 
@@ -214,7 +248,7 @@
 
             const sugar = document.getElementById('modalSugar').value;
             const ice = document.getElementById('modalIce').value;
-            
+
             const selectedAddons = [];
             let addonTotal = 0;
             document.querySelectorAll('input[name="modalAddon"]:checked').forEach(cb => {
@@ -225,10 +259,10 @@
 
             const unitPrice = activeItemData.basePrice + addonTotal;
 
-            const existing = cart.find(i => 
-                i.id === activeItemData.id && 
-                i.sugar === sugar && 
-                i.ice === ice && 
+            const existing = cart.find(i =>
+                i.id === activeItemData.id &&
+                i.sugar === sugar &&
+                i.ice === ice &&
                 JSON.stringify(i.addons) === JSON.stringify(selectedAddons.map(a => a.name))
             );
 
@@ -273,7 +307,7 @@
             cart.forEach((item, index) => {
                 const itemTotal = item.price * item.quantity;
                 total += itemTotal;
-                
+
                 let detailsText = `${item.sugar}, ${item.ice}`;
                 if (item.addons && item.addons.length > 0) {
                     detailsText += ` + ${item.addons.join(', ')}`;
@@ -314,14 +348,14 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    
+
                     // Increment and update UI count after successful DB write
                     dailyOrderCount++;
                     document.getElementById('dailyOrderCount').innerText = dailyOrderCount;
-                    
+
                     statusEl.style.color = '#28a745';
                     statusEl.innerText = `Order #${data.orderId} submitted successfully!`;
-                    
+
                     cart = [];
                     renderCart();
 
