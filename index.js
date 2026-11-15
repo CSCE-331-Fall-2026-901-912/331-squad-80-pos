@@ -5,6 +5,7 @@ const PgStore = require('connect-pg-simple')(session);
 const { rateLimit } = require('express-rate-limit');
 const { scrypt, timingSafeEqual } = require('node:crypto');
 const { promisify } = require('node:util');
+const { registerCustomerApi } = require('./customer-api');
 require('dotenv').config();
 
 // Create express app
@@ -202,7 +203,7 @@ const DEFAULT_EMPLOYEE_ID = 1;
 
 
 // Place an order and automatically deduct inventory
-app.post('/api/orders', async (req, res) => {
+async function handleOrder(req, res, customerAccountId = null) {
 
     const lines = req.body?.items;
 
@@ -394,24 +395,41 @@ app.post('/api/orders', async (req, res) => {
         // 7. Insert order into database
         // -----------------------------------------
 
-        const orderRes = await client.query(
-            `INSERT INTO orders (
-                order_id,
-                customer_id,
-                employee_id,
-                total_cost
+        const orderRes = customerAccountId === null
+            ? await client.query(
+                `INSERT INTO orders (
+                    order_id,
+                    customer_id,
+                    employee_id,
+                    total_cost
+                )
+                SELECT
+                    COALESCE(MAX(order_id), 0) + 1,
+                    $1, $2, $3
+                FROM orders
+                RETURNING order_id`,
+                [GUEST_CUSTOMER_ID, DEFAULT_EMPLOYEE_ID, totalCents / 100]
             )
-            SELECT
-                COALESCE(MAX(order_id), 0) + 1,
-                $1, $2, $3
-            FROM orders
-            RETURNING order_id`,
-            [
-                GUEST_CUSTOMER_ID,
-                DEFAULT_EMPLOYEE_ID,
-                totalCents / 100
-            ]
-        );
+            : await client.query(
+                `INSERT INTO orders (
+                    order_id,
+                    customer_id,
+                    customer_account_id,
+                    employee_id,
+                    total_cost
+                )
+                SELECT
+                    COALESCE(MAX(order_id), 0) + 1,
+                    $1, $2, $3, $4
+                FROM orders
+                RETURNING order_id`,
+                [
+                    GUEST_CUSTOMER_ID,
+                    customerAccountId,
+                    DEFAULT_EMPLOYEE_ID,
+                    totalCents / 100
+                ]
+            );
 
         const orderId = orderRes.rows[0].order_id;
 
@@ -475,6 +493,16 @@ app.post('/api/orders', async (req, res) => {
         client.release();
 
     }
+}
+
+app.post('/api/orders', (req, res) => handleOrder(req, res));
+
+registerCustomerApi(app, {
+    pool,
+    appOrigin,
+    sessionSecret,
+    secureCookie,
+    placeOrder: handleOrder
 });
 
 
