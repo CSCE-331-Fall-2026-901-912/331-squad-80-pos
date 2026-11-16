@@ -213,6 +213,20 @@ async function handleOrder(req, res, customerAccountId = null) {
         });
     }
 
+    // Optional (cashier checkout only): { method: 'card' } or { method: 'cash', tenderedCents }
+    const payment = req.body?.payment;
+    const paymentMethod = payment?.method ?? null;
+    const tenderedCents = paymentMethod === 'cash' ? payment.tenderedCents : null;
+
+    if (
+        (payment !== undefined && paymentMethod !== 'cash' && paymentMethod !== 'card') ||
+        (paymentMethod === 'cash' && (!Number.isInteger(tenderedCents) || tenderedCents < 0 || tenderedCents > 1000000))
+    ) {
+        return res.status(400).json({
+            error: 'Invalid payment.'
+        });
+    }
+
     // -----------------------------------------
     // 1. Validate incoming order information
     // -----------------------------------------
@@ -391,9 +405,20 @@ async function handleOrder(req, res, customerAccountId = null) {
             0
         );
 
+        if (paymentMethod === 'cash' && tenderedCents < totalCents) {
+
+            await client.query('ROLLBACK');
+
+            return res.status(400).json({
+                error: `Cash tendered is less than the $${(totalCents / 100).toFixed(2)} total.`
+            });
+        }
+
         // -----------------------------------------
         // 7. Insert order into database
         // -----------------------------------------
+
+        const cashTendered = tenderedCents === null ? null : tenderedCents / 100;
 
         const orderRes = customerAccountId === null
             ? await client.query(
@@ -401,14 +426,16 @@ async function handleOrder(req, res, customerAccountId = null) {
                     order_id,
                     customer_id,
                     employee_id,
-                    total_cost
+                    total_cost,
+                    payment_method,
+                    cash_tendered
                 )
                 SELECT
                     COALESCE(MAX(order_id), 0) + 1,
-                    $1, $2, $3
+                    $1, $2, $3, $4, $5
                 FROM orders
                 RETURNING order_id`,
-                [GUEST_CUSTOMER_ID, DEFAULT_EMPLOYEE_ID, totalCents / 100]
+                [GUEST_CUSTOMER_ID, DEFAULT_EMPLOYEE_ID, totalCents / 100, paymentMethod, cashTendered]
             )
             : await client.query(
                 `INSERT INTO orders (
@@ -416,18 +443,22 @@ async function handleOrder(req, res, customerAccountId = null) {
                     customer_id,
                     customer_account_id,
                     employee_id,
-                    total_cost
+                    total_cost,
+                    payment_method,
+                    cash_tendered
                 )
                 SELECT
                     COALESCE(MAX(order_id), 0) + 1,
-                    $1, $2, $3, $4
+                    $1, $2, $3, $4, $5, $6
                 FROM orders
                 RETURNING order_id`,
                 [
                     GUEST_CUSTOMER_ID,
                     customerAccountId,
                     DEFAULT_EMPLOYEE_ID,
-                    totalCents / 100
+                    totalCents / 100,
+                    paymentMethod,
+                    cashTendered
                 ]
             );
 
@@ -474,7 +505,8 @@ async function handleOrder(req, res, customerAccountId = null) {
 
         return res.status(201).json({
             orderId,
-            totalCents
+            totalCents,
+            changeCents: tenderedCents === null ? null : tenderedCents - totalCents
         });
 
     } catch (err) {

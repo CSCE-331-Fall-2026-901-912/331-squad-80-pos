@@ -89,6 +89,20 @@
         .modal-footer { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
         .modal-add-btn { background: #007bff; color: white; border: none; padding: 0.75rem; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; }
         .modal-cancel-btn { background: #e2e8f0; border: none; padding: 0.75rem; font-weight: bold; border-radius: 6px; cursor: pointer; }
+
+        /* Payment dialog */
+        .payment-dialog { border: none; padding: 0; background: transparent; width: 400px; max-width: 90%; }
+        .payment-dialog .modal-content { width: auto; max-width: none; }
+        .payment-dialog::backdrop { background: rgba(0,0,0,0.5); }
+        .payment-due { font-size: 1.6rem; font-weight: 800; text-align: center; margin: 0 0 1rem; }
+        .payment-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+        .payment-methods button { padding: 0.8rem; font-size: 1rem; font-weight: 700; border: 2px solid #ccc; background: #f8f9fa; border-radius: 8px; cursor: pointer; }
+        .payment-methods button[aria-pressed="true"] { background: #007bff; color: #fff; border-color: #006fe6; }
+        .cash-input { width: 100%; box-sizing: border-box; padding: 0.6rem; font-size: 1.3rem; border: 1px solid #ccc; border-radius: 6px; }
+        .quick-cash { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+        .quick-cash button { flex: 1; padding: 0.5rem; font-weight: 700; border: 1px solid #ccc; background: #f8f9fa; border-radius: 6px; cursor: pointer; }
+        .change-due { font-size: 1.15rem; font-weight: 700; margin-top: 0.75rem; }
+        .payment-error { color: #dc3545; font-weight: 600; min-height: 1.2rem; margin-top: 0.5rem; }
     </style>
     <link rel="stylesheet" href="/css/cashier-accessibility.css">
 </head>
@@ -174,9 +188,41 @@
             <!-- Small inline status feedback instead of browser alert boxes -->
             <div class="status-msg" id="statusMessage" role="status" aria-live="polite" aria-atomic="true"></div>
 
-            <button type="button" class="submit-btn" onclick="submitOrder()">Submit Order</button>
+            <button type="button" class="submit-btn" onclick="openPayment()">Checkout</button>
         </div>
     </div>
+
+    <!-- Payment Dialog (native dialog: focus trap + Escape handled by the browser) -->
+    <dialog class="payment-dialog" id="paymentDialog" aria-labelledby="paymentTitle">
+        <form class="modal-content" id="paymentForm" novalidate>
+            <div class="modal-header">
+                <h3 id="paymentTitle" style="margin: 0;">Payment</h3>
+                <button type="button" class="modal-close" aria-label="Cancel payment" onclick="closePayment()">×</button>
+            </div>
+            <p class="payment-due">Amount due: <span id="paymentDue">$0.00</span></p>
+
+            <div class="payment-methods" role="group" aria-label="Payment method">
+                <button type="button" data-method="cash" aria-pressed="true">Cash</button>
+                <button type="button" data-method="card" aria-pressed="false">Card</button>
+            </div>
+
+            <div id="cashPanel">
+                <label for="cashTendered" style="font-weight: 600;">Cash received</label>
+                <input class="cash-input" id="cashTendered" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                <div class="quick-cash" id="quickCash" aria-label="Quick cash amounts"></div>
+                <div class="change-due" aria-live="polite">Change due: <span id="changeDue">—</span></div>
+            </div>
+
+            <p id="cardPanel" hidden>Ask the customer to insert, tap, or swipe their card on the reader, then press Charge Card.</p>
+
+            <div class="payment-error" id="paymentError" role="alert"></div>
+
+            <div class="modal-footer">
+                <button type="button" class="modal-cancel-btn" onclick="closePayment()">Cancel</button>
+                <button type="submit" class="modal-add-btn" id="paymentSubmit">Complete Cash Sale</button>
+            </div>
+        </form>
+    </dialog>
 
     <!-- Customization Modal Popup -->
     <div class="modal-overlay" id="customizeModal" hidden>
@@ -422,48 +468,146 @@
             })[character]);
         }
 
-        async function submitOrder() {
+        // ---------- Payment ----------
+        const paymentDialog = document.getElementById('paymentDialog');
+        const cashInput = document.getElementById('cashTendered');
+        const paymentSubmit = document.getElementById('paymentSubmit');
+        const paymentError = document.getElementById('paymentError');
+        let paymentMethod = 'cash';
+        let dueCents = 0;
+        let paying = false;
+
+        const money = cents => '$' + (cents / 100).toFixed(2);
+
+        // Exact, next whole dollar, then common bills above the total
+        function quickCashAmounts(cents) {
+            const bills = [500, 1000, 2000, 5000, 10000].filter(bill => bill > cents);
+            return [...new Set([cents, Math.ceil(cents / 100) * 100, ...bills])].slice(0, 5);
+        }
+
+        function tenderedCents() {
+            const value = parseFloat(cashInput.value);
+            return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) : null;
+        }
+
+        function updatePaymentForm() {
+            const cash = paymentMethod === 'cash';
+            document.querySelectorAll('.payment-methods button').forEach(button => {
+                button.setAttribute('aria-pressed', String(button.dataset.method === paymentMethod));
+            });
+            document.getElementById('cashPanel').hidden = !cash;
+            document.getElementById('cardPanel').hidden = cash;
+
+            const tendered = tenderedCents();
+            document.getElementById('changeDue').innerText = tendered === null
+                ? '—'
+                : tendered >= dueCents ? money(tendered - dueCents) : `${money(dueCents - tendered)} short`;
+
+            if (!paying) {
+                paymentSubmit.innerText = cash ? 'Complete Cash Sale' : 'Charge Card';
+                paymentSubmit.disabled = cash && (tendered === null || tendered < dueCents);
+            }
+        }
+
+        function openPayment() {
             const statusEl = document.getElementById('statusMessage');
             if (cart.length === 0) {
                 statusEl.style.color = '#dc3545';
                 statusEl.innerText = 'Cart is empty.';
                 return;
             }
+            dueCents = cart.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0);
+            document.getElementById('paymentDue').innerText = money(dueCents);
+            document.getElementById('quickCash').innerHTML = quickCashAmounts(dueCents)
+                .map(cents => `<button type="button" data-cents="${cents}">${cents === dueCents ? 'Exact' : money(cents)}</button>`)
+                .join('');
+            paymentMethod = 'cash';
+            cashInput.value = '';
+            paymentError.innerText = '';
+            updatePaymentForm();
+            paymentDialog.showModal();
+            cashInput.focus();
+        }
+
+        function closePayment() {
+            if (!paying) paymentDialog.close();
+        }
+
+        paymentDialog.addEventListener('cancel', event => {
+            if (paying) event.preventDefault();
+        });
+
+        document.querySelector('.payment-methods').addEventListener('click', event => {
+            const button = event.target.closest('button[data-method]');
+            if (!button || paying) return;
+            paymentMethod = button.dataset.method;
+            paymentError.innerText = '';
+            updatePaymentForm();
+            if (paymentMethod === 'cash') cashInput.focus();
+        });
+
+        document.getElementById('quickCash').addEventListener('click', event => {
+            const button = event.target.closest('button[data-cents]');
+            if (!button) return;
+            cashInput.value = (Number(button.dataset.cents) / 100).toFixed(2);
+            updatePaymentForm();
+        });
+
+        cashInput.addEventListener('input', updatePaymentForm);
+
+        document.getElementById('paymentForm').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (paying || paymentSubmit.disabled) return;
+
+            const payment = paymentMethod === 'cash'
+                ? { method: 'cash', tenderedCents: tenderedCents() }
+                : { method: 'card' };
+
+            paying = true;
+            paymentSubmit.disabled = true;
+            paymentError.innerText = '';
+            // shortcut: no card processor/hardware yet, so the reader step always approves; swap in Stripe Terminal or Square when the store has a reader.
+            paymentSubmit.innerText = paymentMethod === 'card' ? 'Waiting for card reader…' : 'Processing…';
 
             try {
                 const response = await fetch('/api/orders', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: cart })
+                    body: JSON.stringify({ items: cart, payment })
                 });
+                const data = await response.json().catch(() => ({}));
 
-                if (response.ok) {
-                    const data = await response.json();
-
-                    // Increment and update UI count after successful DB write
-                    dailyOrderCount++;
-                    document.getElementById('dailyOrderCount').innerText = dailyOrderCount;
-
-                    statusEl.style.color = '#28a745';
-                    statusEl.innerText = `Order #${data.orderId} submitted successfully!`;
-
-                    cart = [];
-                    renderCart();
-
-                    setTimeout(() => {
-                        statusEl.innerText = '';
-                    }, 4000);
-                } else {
-                    const err = await response.json();
-                    statusEl.style.color = '#dc3545';
-                    statusEl.innerText = 'Error: ' + (err.error || 'Failed to submit order.');
+                if (!response.ok) {
+                    paymentError.innerText = data.error || 'Failed to submit order.';
+                    return;
                 }
+
+                // Increment and update UI count after successful DB write
+                dailyOrderCount++;
+                document.getElementById('dailyOrderCount').innerText = dailyOrderCount;
+
+                const statusEl = document.getElementById('statusMessage');
+                statusEl.style.color = '#28a745';
+                statusEl.innerText = payment.method === 'cash'
+                    ? `Order #${data.orderId} paid. Change due: ${money(data.changeCents)}`
+                    : `Order #${data.orderId} paid by card. Approved.`;
+
+                cart = [];
+                renderCart();
+                paying = false;
+                paymentDialog.close();
+
+                setTimeout(() => {
+                    statusEl.innerText = '';
+                }, 8000);
             } catch (err) {
                 console.error(err);
-                statusEl.style.color = '#dc3545';
-                statusEl.innerText = 'Network error submitting order.';
+                paymentError.innerText = 'Network error submitting order.';
+            } finally {
+                paying = false;
+                updatePaymentForm();
             }
-        }
+        });
     </script>
     <script src="/js/cashier-accessibility.js"></script>
 </body>
